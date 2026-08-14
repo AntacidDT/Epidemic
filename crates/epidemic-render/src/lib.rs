@@ -61,6 +61,10 @@ pub struct Renderer {
     start_time: Instant,
     map_texture: wgpu::Texture,
     logo_texture: Option<egui::TextureHandle>,
+    bg_mainmenu: Option<egui::TextureHandle>,
+    bg_gamemode: Option<egui::TextureHandle>,
+    bg_evolve: Option<egui::TextureHandle>,
+    bg_world: Option<egui::TextureHandle>,
     egui_ctx: egui::Context,
     egui_state: egui_winit::State,
     egui_renderer: egui_wgpu::Renderer,
@@ -235,7 +239,13 @@ impl Renderer {
         Self {
             surface, device, queue, config, size, pipeline, uniform_buffer,
             region_buffer, transport_buffer, bind_group, start_time: Instant::now(),
-            map_texture: map_tex, logo_texture: None, egui_ctx, egui_state, egui_renderer,
+                        map_texture: map_tex,
+            logo_texture: None,
+            bg_mainmenu: None,
+            bg_gamemode: None,
+            bg_evolve: None,
+            bg_world: None,
+            egui_ctx, egui_state, egui_renderer,
         }
     }
 
@@ -264,6 +274,25 @@ impl Renderer {
                 let pixels = img.into_raw();
                 let color_image = egui::ColorImage::from_rgba_unmultiplied(size, &pixels);
                 self.logo_texture = Some(self.egui_ctx.load_texture("logo", color_image, egui::TextureOptions::LINEAR));
+            }
+        }
+
+        // Load backgrounds on first frame
+        if self.bg_mainmenu.is_none() {
+            for (path, slot) in [
+                ("mainmenubackground.png", &mut self.bg_mainmenu),
+                ("gamemodemenubackground.png", &mut self.bg_gamemode),
+                ("evolvebackground.png", &mut self.bg_evolve),
+                ("worldmenubackground.png", &mut self.bg_world),
+            ] {
+                if slot.is_none() {
+                    if let Ok(img) = load_asset_image(path) {
+                        let size = [img.width() as usize, img.height() as usize];
+                        let pixels = img.into_raw();
+                        let color_image = egui::ColorImage::from_rgba_unmultiplied(size, &pixels);
+                        *slot = Some(self.egui_ctx.load_texture(path, color_image, egui::TextureOptions::LINEAR));
+                    }
+                }
             }
         }
 
@@ -305,7 +334,11 @@ impl Renderer {
         let logo = self.logo_texture.clone();
         let raw_input = self.egui_state.take_egui_input(window);
         let hovered = hovered_region;
-        let full_output = self.egui_ctx.run(raw_input, |ctx| { build_ui(ctx, world, logo.as_ref(), hovered); });
+        let bg_mm = self.bg_mainmenu.clone();
+        let bg_gm = self.bg_gamemode.clone();
+        let bg_ev = self.bg_evolve.clone();
+        let bg_wm = self.bg_world.clone();
+        let full_output = self.egui_ctx.run(raw_input, |ctx| { build_ui(ctx, world, logo.as_ref(), hovered, bg_mm.as_ref(), bg_gm.as_ref(), bg_ev.as_ref(), bg_wm.as_ref()); });
         self.egui_state.handle_platform_output(window, full_output.platform_output);
         let paint_jobs = self.egui_ctx.tessellate(full_output.shapes, full_output.pixels_per_point);
         for (id, delta) in &full_output.textures_delta.set { self.egui_renderer.update_texture(&self.device, &self.queue, *id, delta); }
@@ -361,18 +394,31 @@ impl Renderer {
 }
 
 fn load_logo() -> Result<image::RgbaImage, Box<dyn std::error::Error>> {
-    let img = image::open("../assets/EPIDEMIC.png")
-        .or_else(|_| image::open("assets/EPIDEMIC.png"))
-        .or_else(|_| image::open("../Assets/EPIDEMIC.png"))
-        .or_else(|_| image::open("Assets/EPIDEMIC.png"))?;
-    Ok(img.to_rgba8())
+    load_asset_image("EPIDEMIC.png")
+}
+
+fn load_asset_image(name: &str) -> Result<image::RgbaImage, Box<dyn std::error::Error>> {
+    let paths = [
+        format!("../Assets/{name}"),
+        format!("Assets/{name}"),
+        format!("../assets/{name}"),
+        format!("assets/{name}"),
+    ];
+    for path in &paths {
+        if let Ok(img) = image::open(path) {
+            return Ok(img.to_rgba8());
+        }
+    }
+    Err(format!("Could not find {name}").into())
 }
 
 // ─────────────────────────────────────────────────────────────
 // egui UI
 // ─────────────────────────────────────────────────────────────
 
-fn build_ui(ctx: &egui::Context, world: &mut World, logo: Option<&egui::TextureHandle>, hovered_region: Option<u16>) {
+fn build_ui(ctx: &egui::Context, world: &mut World, logo: Option<&egui::TextureHandle>, hovered_region: Option<u16>,
+    bg_mainmenu: Option<&egui::TextureHandle>, bg_gamemode: Option<&egui::TextureHandle>,
+    bg_evolve: Option<&egui::TextureHandle>, bg_world: Option<&egui::TextureHandle>) {
     // Minimalistic dark palette
     let bg = egui::Color32::from_rgb(18, 18, 24);
     let surface = egui::Color32::from_rgb(28, 28, 38);
@@ -402,8 +448,8 @@ fn build_ui(ctx: &egui::Context, world: &mut World, logo: Option<&egui::TextureH
     ctx.set_style(style);
 
     match world.phase {
-        GamePhase::TitleScreen => build_title_screen(ctx, world, logo, bg, surface, border, heading, accent, accent2, text, muted),
-        GamePhase::PathogenSelect => build_game_type_select(ctx, world, bg, surface, surface2, border, heading, accent, accent2, text, muted, success, danger, info, warning),
+        GamePhase::TitleScreen => build_title_screen(ctx, world, logo, bg_mainmenu, bg, heading, accent, text, muted, surface, border),
+        GamePhase::PathogenSelect => build_game_type_select(ctx, world, bg_gamemode, bg, surface, surface2, border, heading, accent, accent2, text, muted, success, danger, info, warning),
         GamePhase::DifficultySelect => build_pathogen_select(ctx, world, bg, surface, surface2, border, heading, accent, accent2, text, muted, success, danger, info, warning),
         GamePhase::SelectOrigin => {
             build_gameplay_hud(ctx, world, bg, surface, surface2, border, text, muted, heading, accent, success, danger, info, warning, hovered_region);
@@ -414,7 +460,7 @@ fn build_ui(ctx: &egui::Context, world: &mut World, logo: Option<&egui::TextureH
             build_hover_tooltip(ctx, world, hovered_region, bg, surface, border, text, muted, heading, success, danger);
             build_country_detail(ctx, world, bg, surface, surface2, border, text, muted, heading, accent, success, danger, info, warning);
             if world.show_evolution {
-                build_evolution_menu(ctx, world, bg, surface, surface2, border, text, muted, heading, accent, accent2, success, danger, info, warning);
+                build_evolution_menu(ctx, world, bg_evolve, bg, surface, surface2, border, text, muted, heading, accent, accent2, success, danger, info, warning);
             }
         }
         GamePhase::Won | GamePhase::Lost => {
@@ -426,10 +472,18 @@ fn build_ui(ctx: &egui::Context, world: &mut World, logo: Option<&egui::TextureH
 
 // ─── Title Screen ───
 fn build_title_screen(ctx: &egui::Context, world: &mut World, logo: Option<&egui::TextureHandle>,
-    bg: egui::Color32, surface: egui::Color32, border: egui::Color32,
-    heading: egui::Color32, accent: egui::Color32, accent2: egui::Color32,
-    text: egui::Color32, muted: egui::Color32) {
+    bg_image: Option<&egui::TextureHandle>,
+    bg: egui::Color32, heading: egui::Color32, accent: egui::Color32,
+    text: egui::Color32, muted: egui::Color32, surface: egui::Color32, border: egui::Color32) {
     egui::CentralPanel::default().frame(egui::Frame::new().fill(bg)).show(ctx, |ui| {
+        // Background image
+        if let Some(tex) = bg_image {
+            let rect = ui.max_rect();
+            ui.painter().image(tex.id(), rect, egui::Rect::from_min_max(
+                egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0),
+            ), egui::Color32::WHITE);
+        }
+
         ui.vertical_centered(|ui| {
             ui.add_space(100.0);
             // Logo
@@ -468,11 +522,20 @@ fn build_title_screen(ctx: &egui::Context, world: &mut World, logo: Option<&egui
 
 // ─── Game Type Select ───
 fn build_game_type_select(ctx: &egui::Context, world: &mut World,
+    bg_image: Option<&egui::TextureHandle>,
     bg: egui::Color32, surface: egui::Color32, surface2: egui::Color32, border: egui::Color32,
     heading: egui::Color32, accent: egui::Color32, accent2: egui::Color32,
     text: egui::Color32, muted: egui::Color32,
     success: egui::Color32, danger: egui::Color32, info: egui::Color32, warning: egui::Color32) {
     egui::CentralPanel::default().frame(egui::Frame::new().fill(bg).inner_margin(egui::Margin::same(60))).show(ctx, |ui| {
+        // Background image
+        if let Some(tex) = bg_image {
+            let rect = ui.max_rect();
+            ui.painter().image(tex.id(), rect, egui::Rect::from_min_max(
+                egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0),
+            ), egui::Color32::WHITE);
+        }
+
         ui.vertical_centered(|ui| {
             ui.label(egui::RichText::new("GAME TYPE").size(28.0).strong().color(heading));
             ui.add_space(8.0);
@@ -811,6 +874,7 @@ fn build_hover_tooltip(ctx: &egui::Context, world: &World, hovered_region: Optio
 
 // ─── Evolution Menu ───
 fn build_evolution_menu(ctx: &egui::Context, world: &mut World,
+    bg_image: Option<&egui::TextureHandle>,
     bg: egui::Color32, surface: egui::Color32, surface2: egui::Color32, border: egui::Color32,
     text: egui::Color32, muted: egui::Color32, heading: egui::Color32, accent: egui::Color32, accent2: egui::Color32,
     success: egui::Color32, danger: egui::Color32, info: egui::Color32, warning: egui::Color32) {
@@ -818,6 +882,14 @@ fn build_evolution_menu(ctx: &egui::Context, world: &mut World,
     egui::CentralPanel::default()
         .frame(egui::Frame::new().fill(egui::Color32::from_rgba_premultiplied(0, 0, 0, 180)))
         .show(ctx, |ui| {
+            // Background image
+            if let Some(tex) = bg_image {
+                let rect = ui.max_rect();
+                ui.painter().image(tex.id(), rect, egui::Rect::from_min_max(
+                    egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0),
+                ), egui::Color32::from_rgba_premultiplied(128, 128, 128, 255));
+            }
+
             // Main panel
             egui::Frame::new()
                 .fill(surface)
