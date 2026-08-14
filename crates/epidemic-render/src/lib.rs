@@ -481,8 +481,16 @@ fn build_ui(ctx: &egui::Context, world: &mut World, logo: Option<&egui::TextureH
 }
 
 // ─── Title Screen ───
-fn build_title_screen(ctx: &egui::Context, world: &mut World, logo: Option<&egui::TextureHandle>,
+fn build_title_screen(ctx: &egui::Context, world: &mut World, _logo: Option<&egui::TextureHandle>,
     bg_image: Option<&egui::TextureHandle>) {
+
+    // Color palette (UI elements only)
+    let panel_fill = egui::Color32::from_rgb(232, 130, 130);     // #E88282
+    let btn_fill = egui::Color32::from_rgb(255, 92, 92);         // #FF5C5C Coral Red
+    let btn_outline = egui::Color32::from_rgb(58, 11, 14);       // #3A0B0E Dark Maroon
+    let btn_text = egui::Color32::from_rgb(0, 0, 0);             // #000000 Black
+    let title_color = egui::Color32::from_rgb(128, 24, 24);      // #801818 Dark Red
+    let body_text = egui::Color32::from_rgb(224, 112, 112);      // #E07070 Muted Light Red
 
     egui::CentralPanel::default()
         .frame(egui::Frame::new().fill(BLACK))
@@ -491,129 +499,150 @@ fn build_title_screen(ctx: &egui::Context, world: &mut World, logo: Option<&egui
             let sw = full_rect.width();
             let sh = full_rect.height();
 
-            // Background gradient
-            gradient_rect_vertical(ui, full_rect, BG_DARK, BLACK);
-
-            // Background image overlay
+            // Background image
             if let Some(tex) = bg_image {
                 ui.put(full_rect, egui::Image::new(tex).fit_to_exact_size(full_rect.size()));
             }
 
-            // Dark overlay
-            ui.painter().rect_filled(full_rect, 0.0, egui::Color32::from_rgba_premultiplied(0, 0, 0, 140));
-
-            // ── 1. Top Header Block (Centered) ──
-
-            // Main Title: EPIDEMIC at (0.5, 0.12)
-            let title_x = sw * 0.5;
-            let title_y = sh * 0.12;
-            let title_text = "EPIDEMIC";
-            let title_galley = ui.painter().layout_no_wrap(
-                title_text.to_string(),
-                egui::FontId::proportional(72.0),
-                PRIMARY,
+            // ── A. Left Sidebar Container (X: 0.0–0.28, Y: 0.0–1.0) ──
+            let sidebar_rect = egui::Rect::from_min_size(
+                egui::pos2(full_rect.min.x, full_rect.min.y),
+                egui::vec2(sw * 0.28, sh),
             );
-            let title_pos = egui::pos2(title_x - title_galley.size().x * 0.5, title_y);
-            ui.painter().galley(title_pos, title_galley, WHITE);
+            ui.painter().rect_filled(sidebar_rect, 0.0, panel_fill);
 
-            // Subtitle: NO SURVIVORS at (0.5, 0.18)
-            let sub_y = sh * 0.18;
-            let sub_text = "NO SURVIVORS";
-            let sub_galley = ui.painter().layout_no_wrap(
-                sub_text.to_string(),
-                egui::FontId::proportional(28.0),
-                EXTRA,
-            );
-            let sub_pos = egui::pos2(title_x - sub_galley.size().x * 0.5, sub_y);
-            ui.painter().galley(sub_pos, sub_galley, EXTRA);
+            // Vertical button stack centered at X ≈ 0.14
+            let btn_width = sw * 0.20;
+            let btn_height = 48.0;
+            let btn_x = sw * 0.14 - btn_width * 0.5;
 
-            // ── 2. Central Navigation Menu (Vertical Button Stack) ──
-
-            let btn_width = sw * 0.40;
-            let btn_height = 52.0;
-            let btn_spacing = sh * 0.08; // ~8% of screen height between buttons
-            let btn_x = sw * 0.5 - btn_width * 0.5;
-            let start_y = sh * 0.55;
-
-            // Button definitions
             let buttons = [
-                ("START GAME", true),
-                ("SETTINGS", true),
-                ("CREDITS", true),
-                ("QUIT", true),
+                ("PLAY", 0.22),
+                ("LOAD", 0.35),
+                ("ENCYCLOPEDIA", 0.48),
+                ("CREDITS", 0.61),
+                ("SETTINGS", 0.74),
             ];
 
-            for (i, (label, _enabled)) in buttons.iter().enumerate() {
-                let btn_y = start_y + (i as f32 * btn_spacing);
+            for (label, y_frac) in &buttons {
+                let btn_y = sh * y_frac;
                 let btn_rect = egui::Rect::from_min_size(
                     egui::pos2(btn_x, btn_y),
                     egui::vec2(btn_width, btn_height),
                 );
 
-                // Button background
-                let is_hovered = ui.rect_contains_pointer(btn_rect);
-                let btn_fill = if is_hovered { BG_HOVER } else { BG_CARD };
-                let btn_stroke = if is_hovered {
-                    egui::Stroke::new(1.5, PRIMARY)
-                } else {
-                    egui::Stroke::new(1.0, BORDER)
-                };
+                // Drop shadow (bottom-right offset)
+                let shadow_offset = 4.0;
+                let shadow_rect = egui::Rect::from_min_size(
+                    egui::pos2(btn_x + shadow_offset, btn_y + shadow_offset),
+                    egui::vec2(btn_width, btn_height),
+                );
+                ui.painter().rect_filled(shadow_rect, 4.0, btn_outline);
 
-                ui.painter().rect_filled(btn_rect, 10.0, btn_fill);
-                ui.painter().rect_stroke(btn_rect, 10.0, btn_stroke, egui::StrokeKind::Outside);
+                // Button fill
+                let is_hovered = ui.rect_contains_pointer(btn_rect);
+                let fill = if is_hovered {
+                    egui::Color32::from_rgb(255, 120, 120) // lighter on hover
+                } else {
+                    btn_fill
+                };
+                ui.painter().rect_filled(btn_rect, 4.0, fill);
+
+                // Button outline
+                ui.painter().rect_stroke(btn_rect, 4.0, egui::Stroke::new(2.0, btn_outline), egui::StrokeKind::Outside);
 
                 // Button text centered
-                let btn_galley = ui.painter().layout_no_wrap(
+                let galley = ui.painter().layout_no_wrap(
                     label.to_string(),
-                    egui::FontId::proportional(18.0),
-                    TEXT,
+                    egui::FontId::proportional(16.0),
+                    btn_text,
                 );
                 let text_pos = egui::pos2(
-                    btn_rect.center().x - btn_galley.size().x * 0.5,
-                    btn_rect.center().y - btn_galley.size().y * 0.5,
+                    btn_rect.center().x - galley.size().x * 0.5,
+                    btn_rect.center().y - galley.size().y * 0.5,
                 );
-                ui.painter().galley(text_pos, btn_galley, WHITE);
+                ui.painter().galley(text_pos, galley, btn_text);
 
                 // Click detection
                 let response = ui.allocate_rect(btn_rect, egui::Sense::click());
                 if response.clicked() {
                     match *label {
-                        "START GAME" => { world.phase = GamePhase::PathogenSelect; }
-                        "QUIT" => { std::process::exit(0); }
-                        _ => {} // Settings, Credits — TODO
+                        "PLAY" => { world.phase = GamePhase::PathogenSelect; }
+                        _ => {} // TODO: other screens
                     }
                 }
             }
 
-            // ── 3. Footer Bar ──
+            // ── B. Main Text Content Area (X: 0.28–1.0) ──
 
-            // Version label: bottom-left (0.03, 0.95)
-            let footer_y = sh * 0.95;
-            let version_text = "v0.2.0 Alpha";
-            let version_galley = ui.painter().layout_no_wrap(
-                version_text.to_string(),
-                egui::FontId::proportional(12.0),
-                TEXT_DIM,
+            // Main Title: EPIDEMIC at (0.64, 0.25)
+            let title_x = sw * 0.64;
+            let title_y = sh * 0.25;
+            let title_galley = ui.painter().layout_no_wrap(
+                "EPIDEMIC".to_string(),
+                egui::FontId::proportional(64.0),
+                title_color,
             );
             ui.painter().galley(
-                egui::pos2(sw * 0.03, footer_y),
-                version_galley,
-                TEXT_DIM,
+                egui::pos2(title_x - title_galley.size().x * 0.5, title_y),
+                title_galley,
+                title_color,
             );
 
-            // GitHub link: bottom-right (0.97, 0.95)
-            let github_text = "GitHub: Epidemic NS";
-            let github_galley = ui.painter().layout_no_wrap(
-                github_text.to_string(),
-                egui::FontId::proportional(12.0),
-                TEXT_DIM,
+            // Subtitle: NATURAL STRATEGIES at (0.64, 0.35)
+            let sub_y = sh * 0.35;
+            let sub_galley = ui.painter().layout_no_wrap(
+                "NATURAL STRATEGIES".to_string(),
+                egui::FontId::proportional(24.0),
+                title_color,
             );
             ui.painter().galley(
-                egui::pos2(sw * 0.97 - github_galley.size().x, footer_y),
-                github_galley,
-                TEXT_DIM,
+                egui::pos2(title_x - sub_galley.size().x * 0.5, sub_y),
+                sub_galley,
+                title_color,
             );
+
+            // Tagline at (0.64, 0.48)
+            let tag_y = sh * 0.48;
+            let tag_galley = ui.painter().layout_no_wrap(
+                "open source pandemic strategy game thats meant for fun :)".to_string(),
+                egui::FontId::proportional(14.0),
+                body_text,
+            );
+            ui.painter().galley(
+                egui::pos2(title_x - tag_galley.size().x * 0.5, tag_y),
+                tag_galley,
+                body_text,
+            );
+
+            // Disclaimer at (0.64, 0.88)
+            let disc_y = sh * 0.85;
+            let disc_lines = [
+                "WARNING:",
+                "This game does not encourage the production of real Biological",
+                "hazards. Its purely simulation and absolutely not meant to be used",
+                "for harmful purposes.",
+            ];
+            let line_height = 16.0;
+            for (i, line) in disc_lines.iter().enumerate() {
+                let y = disc_y + i as f32 * line_height;
+                let galley = ui.painter().layout_no_wrap(
+                    line.to_string(),
+                    egui::FontId::proportional(11.0),
+                    muted_to_color32(0.7), // muted
+                );
+                ui.painter().galley(
+                    egui::pos2(title_x - galley.size().x * 0.5, y),
+                    galley,
+                    muted_to_color32(0.7),
+                );
+            }
         });
+}
+
+fn muted_to_color32(brightness: f32) -> egui::Color32 {
+    let v = (brightness * 255.0) as u8;
+    egui::Color32::from_rgb(v, v, v)
 }
 
 // ─── Game Type Select ───
