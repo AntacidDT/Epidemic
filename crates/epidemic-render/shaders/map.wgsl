@@ -1,4 +1,4 @@
-// Map shader — Epidemic NS with custom color palette
+// Map shader — Epidemic NS with color palette + gradients
 
 struct Uniforms {
     time: f32,
@@ -73,53 +73,53 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOutput {
     return out;
 }
 
-// Color palette
-const OCEAN: vec3<f32> = vec3<f32>(0.157, 0.459, 0.741);       // #2875bd
-const HEALTHY: vec3<f32> = vec3<f32>(0.271, 0.573, 0.196);      // #459232
-const INFECTED: vec3<f32> = vec3<f32>(1.0, 0.188, 0.165);       // #ff302a
-const DEAD: vec3<f32> = vec3<f32>(0.286, 0.188, 0.184);         // #49302f
-const BORDER: vec3<f32> = vec3<f32>(0.0, 0.0, 0.0);             // #000000
-const HOVER_TINT: vec3<f32> = vec3<f32>(0.15, 0.15, 0.15);      // white tint
+const OCEAN: vec3<f32> = vec3<f32>(0.157, 0.459, 0.741);
+const HEALTHY: vec3<f32> = vec3<f32>(0.271, 0.573, 0.196);
+const INFECTED: vec3<f32> = vec3<f32>(1.0, 0.188, 0.165);
+const DEAD: vec3<f32> = vec3<f32>(0.286, 0.188, 0.184);
+const BORDER: vec3<f32> = vec3<f32>(0.0, 0.0, 0.0);
+const HOVER_TINT: vec3<f32> = vec3<f32>(0.15, 0.15, 0.15);
+
+fn hash2(p: vec2<f32>) -> f32 {
+    let h = dot(p, vec2<f32>(127.1, 311.7));
+    return fract(sin(h) * 43758.5453);
+}
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    // Read region ID from lookup texture
     let tex_color = textureSample(map_texture, map_sampler, in.uv);
     let region_id = u32(tex_color.r * 255.0 + 0.5);
 
-    // Ocean
     if region_id == 0u {
         return vec4<f32>(OCEAN, 1.0);
     }
 
-    // Get region data
     let data = regions[region_id];
     let is_hovered = f32(region_id == u32(uniforms.hovered_region));
 
-    // Base color: healthy green -> infected red -> dead dark
+    let noise = hash2(in.uv * uniforms.map_w);
+    let grad = noise * 0.06 - 0.03;
+
     var color: vec3<f32>;
 
     if data.fallen == 1u {
-        color = DEAD;
+        color = DEAD + grad;
     } else if data.infection_pct < 0.01 {
-        color = HEALTHY;
+        color = HEALTHY + grad;
     } else {
         let pct = clamp(data.infection_pct, 0.0, 1.0);
-        color = mix(HEALTHY, INFECTED, pct);
+        color = mix(HEALTHY, INFECTED, pct) + grad;
     }
 
-    // Healthcare collapse: pulse red
     if data.healthcare_collapse == 1u {
         let pulse = sin(uniforms.time * 4.0) * 0.15 + 0.15;
         color = mix(color, vec3<f32>(0.9, 0.05, 0.05), pulse);
     }
 
-    // Hover highlight
     if is_hovered > 0.5 {
         color += HOVER_TINT;
     }
 
-    // Border detection: compare with neighbor texels — thin 1px lines
     let texel = vec2<f32>(1.0 / uniforms.map_w, 1.0 / uniforms.map_h);
     let left  = u32(textureSample(map_texture, map_sampler, in.uv + vec2<f32>(-texel.x, 0.0)).r * 255.0 + 0.5);
     let right = u32(textureSample(map_texture, map_sampler, in.uv + vec2<f32>( texel.x, 0.0)).r * 255.0 + 0.5);
@@ -127,7 +127,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let down  = u32(textureSample(map_texture, map_sampler, in.uv + vec2<f32>(0.0,  texel.y)).r * 255.0 + 0.5);
 
     if left != region_id || right != region_id || up != region_id || down != region_id {
-        color = color * 0.3; // darken edge instead of full black
+        color = color * 0.3;
     }
 
     return vec4<f32>(color, 1.0);

@@ -222,7 +222,7 @@ pub fn build_regions() -> Vec<Region> {
         // ═══════════════════════════════════════
         // MIDDLE EAST
         // ═══════════════════════════════════════
-        r(74,"TR","Turkey",86_000_000,&["Turkey"]).ar().mc().ap().sp().h(2.8).into(),
+        r(74,"TR","Turkey",86_000_000,&["TR"]).ar().mc().ap().sp().h(2.8).into(),
         r(75,"IR","Iran",88_000_000,&["IR","Iran"]).ar().mc().ap().sp().h(1.6).au().into(),
         r(76,"IQ","Iraq",43_000_000,&["IQ","Iraq"]).ar().ur().ap().h(1.0).fs().into(),
         r(77,"SA","Saudi Arabia",37_000_000,&["SA","Saudi Arabia"]).ar().ur().ap().sp().w().h(2.5).into(),
@@ -303,7 +303,7 @@ pub fn build_regions() -> Vec<Region> {
         r(132,"TD","Chad",17_000_000,&["TD","Chad"]).ar().ru().ap().h(0.1).fs().into(),
         r(133,"CF","Central African Republic",5_000_000,&["CF"]).tr().ru().h(0.1).fs().into(),
         r(134,"AO","Angola",36_000_000,&["AO"]).tr().ru().ap().h(0.3).into(),
-        r(135,"ST","São Tomé and Principe",230_000,&["São Tomé and Principe"]).tr().ru().i().h(0.5).into(),
+        r(135,"ST","São Tomé and Principe",230_000,&["ST"]).tr().ru().i().h(0.5).into(),
 
         // ═══════════════════════════════════════
         // SOUTHERN AFRICA

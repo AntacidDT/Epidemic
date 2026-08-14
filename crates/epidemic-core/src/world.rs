@@ -856,7 +856,9 @@ impl World {
     // ─────────────────────────────────────────────────────────
 
     fn update_borders(&mut self, severity: f32) {
-        if severity < 0.5 { return; }
+        // STEALTH MECHANIC: if severity is low, countries don't notice
+        // Virus with no symptoms = invisible until severity rises
+        if severity < 2.0 { return; }
 
         let neighbor_pairs = self.get_neighbor_pairs();
         let infected_ids: Vec<u16> = self.regions.iter()
@@ -869,15 +871,23 @@ impl World {
                 (b, a)
             } else { continue };
 
-            let close_chance = (severity as f64 / 50.0).min(0.1)
+            // Only consider closing if the infected neighbor has significant infection
+            let from = match self.regions.iter().find(|r| r.id == infected_id) {
+                Some(r) => r,
+                None => continue,
+            };
+            if from.infection_pct() < 0.05 { continue; } // need 5% infection before neighbor notices
+
+            // Much lower chance — borders don't slam shut instantly
+            let close_chance = (severity as f64 / 200.0).min(0.03)
                 * self.difficulty.border_close_mult() as f64;
 
             // Government type affects response speed
             let gov_mult = match self.regions.iter().find(|r| r.id == healthy_id) {
                 Some(r) => match r.government_type {
-                    GovernmentType::Authoritarian => 1.5, // Faster response
-                    GovernmentType::Democratic => 0.7,    // Slower due to debate
-                    GovernmentType::Failed => 0.1,        // Barely responds
+                    GovernmentType::Authoritarian => 1.5,
+                    GovernmentType::Democratic => 0.5,    // slow to react
+                    GovernmentType::Failed => 0.05,       // barely responds
                 },
                 None => 1.0,
             };
@@ -885,13 +895,13 @@ impl World {
             if pseudo_rand(self.tick, infected_id as usize, healthy_id as usize) < (close_chance * gov_mult) as f32 {
                 if let Some(r) = self.regions.iter_mut().find(|r| r.id == healthy_id && r.borders_open) {
                     r.borders_open = false;
-                    // Air borders close first
                     r.air_borders_open = false;
-                    self.news.push(format!("{} closes borders!", r.name));
+                    let name = r.name.clone();
+                    self.news.push(format!("{name} closes borders!"));
                     self.events.push(GameEvent {
                         tick: self.tick,
-                        message: format!("{} closes borders", r.name),
-                        event_type: EventType::BorderClosed(r.name.clone()),
+                        message: format!("{name} closes borders"),
+                        event_type: EventType::BorderClosed(name),
                     });
                 }
             }
