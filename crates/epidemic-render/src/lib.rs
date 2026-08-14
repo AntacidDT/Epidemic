@@ -412,6 +412,7 @@ fn build_ui(ctx: &egui::Context, world: &mut World, logo: Option<&egui::TextureH
         GamePhase::Playing => {
             build_gameplay_hud(ctx, world, bg, surface, surface2, border, text, muted, heading, accent, success, danger, info, warning, hovered_region);
             build_hover_tooltip(ctx, world, hovered_region, bg, surface, border, text, muted, heading, success, danger);
+            build_country_detail(ctx, world, bg, surface, surface2, border, text, muted, heading, accent, success, danger, info, warning);
         }
         GamePhase::Won | GamePhase::Lost => {
             build_gameplay_hud(ctx, world, bg, surface, surface2, border, text, muted, heading, accent, success, danger, info, warning, hovered_region);
@@ -442,6 +443,20 @@ fn build_title_screen(ctx: &egui::Context, world: &mut World, logo: Option<&egui
                 .min_size(egui::vec2(220.0, 50.0)).fill(accent).corner_radius(egui::CornerRadius::same(12));
             if ui.add(btn).clicked() { world.phase = GamePhase::PathogenSelect; }
             ui.add_space(12.0);
+            // Load Game
+            let save_path = std::path::Path::new("epidemic_save.json");
+            if save_path.exists() {
+                let btn = egui::Button::new(egui::RichText::new("LOAD GAME").size(14.0).strong().color(text))
+                    .min_size(egui::vec2(220.0, 44.0)).fill(surface).corner_radius(egui::CornerRadius::same(12))
+                    .stroke(egui::Stroke::new(1.0, border));
+                if ui.add(btn).clicked() {
+                    match epidemic_core::load_game(save_path) {
+                        Ok(data) => { data.apply_to_world(world); world.phase = GamePhase::Playing; }
+                        Err(e) => { println!("Load failed: {e}"); }
+                    }
+                }
+                ui.add_space(12.0);
+            }
             // Version
             ui.label(egui::RichText::new("v0.2.0").size(11.0).color(border));
         });
@@ -669,6 +684,31 @@ fn build_gameplay_hud(ctx: &egui::Context, world: &mut World,
                 }
             });
 
+            ui.add_space(6.0);
+
+            // Save/Load
+            label_sm(ui, "GAME", muted);
+            ui.horizontal(|ui| {
+                let save_btn = egui::Button::new(egui::RichText::new("Save").size(10.0).strong().color(text))
+                    .fill(surface).corner_radius(egui::CornerRadius::same(6))
+                    .stroke(egui::Stroke::new(1.0, border));
+                if ui.add(save_btn).clicked() {
+                    match epidemic_core::save_game(world, std::path::Path::new("epidemic_save.json")) {
+                        Ok(()) => { println!("Game saved!"); }
+                        Err(e) => { println!("Save failed: {e}"); }
+                    }
+                }
+                let load_btn = egui::Button::new(egui::RichText::new("Load").size(10.0).strong().color(text))
+                    .fill(surface).corner_radius(egui::CornerRadius::same(6))
+                    .stroke(egui::Stroke::new(1.0, border));
+                if ui.add(load_btn).clicked() {
+                    match epidemic_core::load_game(std::path::Path::new("epidemic_save.json")) {
+                        Ok(data) => { data.apply_to_world(world); }
+                        Err(e) => { println!("Load failed: {e}"); }
+                    }
+                }
+            });
+
             ui.add_space(10.0);
 
             // Phase indicator
@@ -799,6 +839,128 @@ fn build_hover_tooltip(ctx: &egui::Context, world: &World, hovered_region: Optio
     }
 }
 
+// ─── Country Detail Panel ───
+fn build_country_detail(ctx: &egui::Context, world: &mut World,
+    bg: egui::Color32, surface: egui::Color32, surface2: egui::Color32, border: egui::Color32,
+    text: egui::Color32, muted: egui::Color32, heading: egui::Color32, accent: egui::Color32,
+    success: egui::Color32, danger: egui::Color32, info: egui::Color32, warning: egui::Color32) {
+    let rid = match world.selected_detail { Some(r) => r, None => return };
+    let region = match world.regions.iter().find(|r| r.id == rid) { Some(r) => r, None => return };
+
+    let name = region.name.clone();
+    let population = region.population;
+    let infected = region.infected;
+    let dead = region.dead;
+    let healthy = region.healthy();
+    let inf_pct = region.infection_pct();
+    let death_pct = region.death_pct();
+    let panic = region.panic;
+    let lockdown = region.lockdown_level;
+    let borders_open = region.borders_open;
+    let healthcare_collapse = region.healthcare_collapse;
+    let fallen = region.fallen;
+    let climate = format!("{:?}", region.climate);
+    let density = format!("{:?}", region.density);
+    let govt = format!("{:?}", region.government_type);
+    let is_wealthy = region.is_wealthy;
+    let inf_history: Vec<(u64, u64)> = region.infection_history.clone();
+    let death_history: Vec<(u64, u64)> = region.death_history.clone();
+
+    egui::Window::new(format!("{} — Details", name))
+        .collapsible(true)
+        .resizable(true)
+        .default_size([300.0, 400.0])
+        .frame(egui::Frame::new().fill(surface).stroke(egui::Stroke::new(1.0, border)).inner_margin(egui::Margin::same(14)))
+        .show(ctx, |ui| {
+            // Header
+            ui.horizontal(|ui| {
+                ui.label(egui::RichText::new(&name).size(18.0).strong().color(heading));
+                if fallen {
+                    egui::Frame::new().fill(danger.linear_multiply(0.2)).corner_radius(egui::CornerRadius::same(4))
+                        .inner_margin(egui::Margin::symmetric(6, 2))
+                        .show(ui, |ui| { ui.label(egui::RichText::new("FALLEN").size(10.0).strong().color(danger)); });
+                }
+            });
+            ui.add_space(4.0);
+            ui.label(egui::RichText::new(format!("{climate} | {density} | {govt}{}", if is_wealthy { " | Wealthy" } else { "" }))
+                .size(11.0).color(muted));
+            ui.add_space(8.0);
+
+            // Population stats
+            ui.label(egui::RichText::new("POPULATION").size(11.0).strong().color(muted));
+            ui.add_space(4.0);
+            row(ui, "Total", &fmt_num(population), heading);
+            row(ui, "Healthy", &fmt_num(healthy), success);
+            row(ui, "Infected", &fmt_num(infected), danger);
+            row(ui, "Dead", &fmt_num(dead), egui::Color32::from_rgb(100, 100, 110));
+            ui.add_space(4.0);
+            // Infection bar
+            ui.label(egui::RichText::new(format!("Infection: {:.1}%", inf_pct * 100.0)).size(11.0).color(danger));
+            ui.add(egui::ProgressBar::new(inf_pct).fill(danger).corner_radius(egui::CornerRadius::same(4)));
+            ui.label(egui::RichText::new(format!("Death: {:.1}%", death_pct * 100.0)).size(11.0).color(egui::Color32::from_rgb(100, 100, 110)));
+            ui.add(egui::ProgressBar::new(death_pct).fill(egui::Color32::from_rgb(100, 100, 110)).corner_radius(egui::CornerRadius::same(4)));
+
+            ui.add_space(8.0);
+
+            // Society
+            ui.label(egui::RichText::new("SOCIETY").size(11.0).strong().color(muted));
+            ui.add_space(4.0);
+            row(ui, "Panic", &format!("{:.0}%", panic * 100.0), warning);
+            row(ui, "Lockdown", &format!("{:.0}%", lockdown * 100.0), info);
+            row(ui, "Borders", if borders_open { "Open" } else { "CLOSED" }, if borders_open { success } else { danger });
+            if healthcare_collapse {
+                ui.label(egui::RichText::new("HEALTHCARE COLLAPSED").size(11.0).strong().color(danger));
+            }
+
+            ui.add_space(8.0);
+
+            // Infection history graph
+            if inf_history.len() > 1 {
+                ui.label(egui::RichText::new("INFECTION CURVE").size(11.0).strong().color(muted));
+                ui.add_space(4.0);
+                let max_val = inf_history.iter().map(|(_, v)| *v).max().unwrap_or(1).max(1) as f32;
+                let graph_height = 80.0;
+                let (response, painter) = ui.allocate_painter(egui::vec2(ui.available_width(), graph_height), egui::Sense::hover());
+                let rect = response.rect;
+
+                // Background
+                painter.rect_filled(rect, 2.0, egui::Color32::from_rgb(20, 20, 28));
+
+                // Draw infection line
+                let points: Vec<egui::Pos2> = inf_history.iter().enumerate().map(|(i, (_, v))| {
+                    let x = rect.left() + (i as f32 / inf_history.len().max(1) as f32) * rect.width();
+                    let y = rect.bottom() - (*v as f32 / max_val) * rect.height();
+                    egui::pos2(x, y)
+                }).collect();
+
+                if points.len() > 1 {
+                    for w in points.windows(2) {
+                        painter.line_segment([w[0], w[1]], egui::Stroke::new(2.0, danger));
+                    }
+                }
+
+                // Draw death line
+                let death_points: Vec<egui::Pos2> = death_history.iter().enumerate().map(|(i, (_, v))| {
+                    let x = rect.left() + (i as f32 / death_history.len().max(1) as f32) * rect.width();
+                    let y = rect.bottom() - (*v as f32 / max_val) * rect.height();
+                    egui::pos2(x, y)
+                }).collect();
+
+                if death_points.len() > 1 {
+                    for w in death_points.windows(2) {
+                        painter.line_segment([w[0], w[1]], egui::Stroke::new(2.0, egui::Color32::from_rgb(100, 100, 110)));
+                    }
+                }
+
+                // Legend
+                ui.horizontal(|ui| {
+                    ui.label(egui::RichText::new("— Infected").size(9.0).color(danger));
+                    ui.label(egui::RichText::new("— Dead").size(9.0).color(egui::Color32::from_rgb(100, 100, 110)));
+                });
+            }
+        });
+}
+
 // ─── Endgame Overlay ───
 fn build_endgame_overlay(ctx: &egui::Context, world: &mut World,
     bg: egui::Color32, surface: egui::Color32, border: egui::Color32,
@@ -877,6 +1039,8 @@ struct App {
     sim_interval_ms: u64,
     cursor_pos: PhysicalPosition<f64>,
     hovered_region: Option<u16>,
+    selected_detail: Option<u16>,
+    last_click_time: Instant,
 }
 
 const BASE_SIM_INTERVAL: u64 = 60;
@@ -888,7 +1052,7 @@ impl App {
             .expect("Failed to load world.svg");
         let mut world = World::new(&svg_content);
         world.init_disease("Epidemic", epidemic_core::PathogenType::Bacteria);
-        Self { window: None, renderer: None, world, last_sim_tick: Instant::now(), sim_interval_ms: BASE_SIM_INTERVAL, cursor_pos: PhysicalPosition::new(0.0, 0.0), hovered_region: None }
+        Self { window: None, renderer: None, world, last_sim_tick: Instant::now(), sim_interval_ms: BASE_SIM_INTERVAL, cursor_pos: PhysicalPosition::new(0.0, 0.0), hovered_region: None, selected_detail: None, last_click_time: Instant::now() }
     }
 }
 
@@ -917,14 +1081,29 @@ impl ApplicationHandler for App {
                 }
             }
             WindowEvent::MouseInput { state: ElementState::Pressed, button: MouseButton::Left, .. } => {
-                if self.world.phase == GamePhase::SelectOrigin {
-                    if let Some(r) = self.renderer.as_ref() {
-                        let (px, py) = r.screen_to_map(self.cursor_pos, &self.world);
-                        if let Some(region) = self.world.region_at_pixel(px, py) {
-                            let rid = region.id; let name = region.name.clone();
+                let now = Instant::now();
+                let is_double_click = now.duration_since(self.last_click_time).as_millis() < 400;
+                self.last_click_time = now;
+
+                if let Some(r) = self.renderer.as_ref() {
+                    let (px, py) = r.screen_to_map(self.cursor_pos, &self.world);
+                    if let Some(region) = self.world.region_at_pixel(px, py) {
+                        let rid = region.id;
+
+                        if self.world.phase == GamePhase::SelectOrigin {
+                            // Single click to start outbreak
+                            let name = region.name.clone();
                             self.world.start_outbreak(rid);
                             if let Some(w) = self.window.as_ref() { w.set_title(&format!("Epidemic NS — {name} outbreak!")); }
+                        } else if is_double_click {
+                            // Double-click to open detail panel
+                            self.selected_detail = if self.selected_detail == Some(rid) { None } else { Some(rid) };
+                            self.world.selected_detail = self.selected_detail;
                         }
+                    } else {
+                        // Clicked ocean — close detail panel
+                        self.selected_detail = None;
+                        self.world.selected_detail = None;
                     }
                 }
             }

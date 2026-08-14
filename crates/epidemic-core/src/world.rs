@@ -325,6 +325,7 @@ pub struct World {
     // Global stats
     pub global_panic: f32,             // 0-1.0 average
     pub game_type: GameType,
+    pub selected_detail: Option<u16>,  // region ID for detail panel
 }
 
 impl World {
@@ -367,6 +368,7 @@ impl World {
             synergies: all_synergies(),
             global_panic: 0.0,
             game_type: GameType::Campaign,
+            selected_detail: None,
         }
     }
 
@@ -873,6 +875,13 @@ impl World {
     // ─────────────────────────────────────────────────────────
 
     fn update_cure_system(&mut self, severity: f32) {
+        // Free Play: no cure
+        if self.game_type == GameType::FreePlay {
+            self.cure_phase = CurePhase::Inactive;
+            self.cure_overall = 0.0;
+            return;
+        }
+
         let infected_count = self.regions.iter().filter(|r| r.infected > 0).count();
 
         // Phase transitions
@@ -1170,20 +1179,30 @@ impl World {
     // ─────────────────────────────────────────────────────────
 
     fn check_endgame(&mut self) {
+        // Free Play: no win/lose
+        if self.game_type == GameType::FreePlay {
+            return;
+        }
+
         let has_healthy = self.regions.iter().any(|r| r.healthy() > 0);
         if !has_healthy && self.phase == GamePhase::Playing {
             self.phase = GamePhase::Won;
             self.news.push("Humanity has fallen. You win.".into());
+            if self.game_type == GameType::SpeedRun {
+                self.news.push(format!("Speed Run completed in {} ticks!", self.tick));
+            }
         }
 
         // Lose only when cure is fully distributed (not just researched)
-        if self.cure_phase == CurePhase::Complete && self.phase == GamePhase::Playing {
-            // Check if infrastructure is destroyed — if so, can still win
-            if self.global_manufacturing > 0.1 {
-                self.phase = GamePhase::Lost;
-                self.news.push("The cure has been distributed. You lose.".into());
-            } else {
-                self.news.push("Cure completed but infrastructure collapsed! Keep fighting.".into());
+        // Speed Run: no cure loss
+        if self.game_type != GameType::SpeedRun {
+            if self.cure_phase == CurePhase::Complete && self.phase == GamePhase::Playing {
+                if self.global_manufacturing > 0.1 {
+                    self.phase = GamePhase::Lost;
+                    self.news.push("The cure has been distributed. You lose.".into());
+                } else {
+                    self.news.push("Cure completed but infrastructure collapsed! Keep fighting.".into());
+                }
             }
         }
     }
