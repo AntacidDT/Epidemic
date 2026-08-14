@@ -1274,9 +1274,13 @@ impl ApplicationHandler for App {
             WindowEvent::Resized(s) => { if let Some(r) = self.renderer.as_mut() { r.resize(s); } }
             WindowEvent::CursorMoved { position, .. } => {
                 self.cursor_pos = position;
-                if let Some(r) = self.renderer.as_ref() {
-                    let (px, py) = r.screen_to_map(self.cursor_pos, &self.world);
-                    self.hovered_region = self.world.region_at_pixel(px, py).map(|r| r.id);
+                if !self.world.show_evolution {
+                    if let Some(r) = self.renderer.as_ref() {
+                        let (px, py) = r.screen_to_map(self.cursor_pos, &self.world);
+                        self.hovered_region = self.world.region_at_pixel(px, py).map(|r| r.id);
+                    }
+                } else {
+                    self.hovered_region = None;
                 }
             }
             WindowEvent::MouseInput { state: ElementState::Pressed, button: MouseButton::Left, .. } => {
