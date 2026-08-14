@@ -32,6 +32,7 @@ pub struct Renderer {
     bind_group: wgpu::BindGroup,
     start_time: Instant,
     map_texture: wgpu::Texture,
+    logo_texture: Option<egui::TextureHandle>,
     // egui
     egui_ctx: egui::Context,
     egui_state: egui_winit::State,
@@ -238,6 +239,7 @@ impl Renderer {
             bind_group,
             start_time: Instant::now(),
             map_texture: map_tex,
+            logo_texture: None,
             egui_ctx,
             egui_state,
             egui_renderer,
@@ -264,6 +266,21 @@ impl Renderer {
 
     pub fn render(&mut self, world: &mut World, window: &Window, hovered_region: Option<u16>) -> Result<(), SurfaceError> {
         let elapsed = self.start_time.elapsed().as_secs_f32();
+
+        // Load logo on first frame
+        if self.logo_texture.is_none() {
+            if let Ok(img) = load_logo() {
+                let size = [img.width() as usize, img.height() as usize];
+                let pixels = img.into_raw();
+                let color_image = egui::ColorImage::from_rgba_unmultiplied(size, &pixels);
+                let tex = self.egui_ctx.load_texture(
+                    "logo",
+                    color_image,
+                    egui::TextureOptions::LINEAR,
+                );
+                self.logo_texture = Some(tex);
+            }
+        }
 
         // Update uniforms
         let uniforms = Uniforms {
@@ -298,9 +315,10 @@ impl Renderer {
         );
 
         // egui
+        let logo = self.logo_texture.clone();
         let raw_input = self.egui_state.take_egui_input(window);
         let full_output = self.egui_ctx.run(raw_input, |ctx| {
-            build_hud(ctx, world);
+            build_ui(ctx, world, logo.as_ref());
         });
         self.egui_state
             .handle_platform_output(window, full_output.platform_output);
@@ -506,21 +524,20 @@ fn build_map_texture(world: &World, hovered_region: Option<u16>) -> Vec<u8> {
     data
 }
 
-fn build_hud(ctx: &egui::Context, world: &mut World) {
+fn build_ui(ctx: &egui::Context, world: &mut World, logo: Option<&egui::TextureHandle>) {
     // Moo UI dark theme colors
-    let bg = egui::Color32::from_rgb(33, 37, 41);        // --bs-body-bg (dark)
-    let surface = egui::Color32::from_rgb(52, 58, 64);    // --bs-secondary-bg
-    let border = egui::Color32::from_rgb(73, 80, 87);     // --bs-border-color
-    let text = egui::Color32::from_rgb(222, 226, 230);    // --bs-body-color
-    let muted = egui::Color32::from_rgb(113, 113, 122);   // --bs-tertiary-color
-    let heading = egui::Color32::from_rgb(255, 255, 255);  // --bs-emphasis-color
-    let _primary = egui::Color32::from_rgb(23, 23, 23);    // --bs-primary
-    let success = egui::Color32::from_rgb(4, 120, 87);    // --bs-success
-    let danger = egui::Color32::from_rgb(231, 0, 11);     // --bs-danger
-    let info = egui::Color32::from_rgb(3, 105, 161);      // --bs-info
-    let warning = egui::Color32::from_rgb(180, 83, 9);    // --bs-warning
+    let bg = egui::Color32::from_rgb(33, 37, 41);
+    let surface = egui::Color32::from_rgb(52, 58, 64);
+    let border = egui::Color32::from_rgb(73, 80, 87);
+    let text = egui::Color32::from_rgb(222, 226, 230);
+    let muted = egui::Color32::from_rgb(113, 113, 122);
+    let heading = egui::Color32::from_rgb(255, 255, 255);
+    let success = egui::Color32::from_rgb(4, 120, 87);
+    let danger = egui::Color32::from_rgb(231, 0, 11);
+    let info = egui::Color32::from_rgb(3, 105, 161);
+    let warning = egui::Color32::from_rgb(180, 83, 9);
 
-    // Apply Moo UI-inspired style
+    // Apply style
     let mut style = (*ctx.style()).clone();
     style.spacing.item_spacing = egui::vec2(8.0, 6.0);
     style.spacing.button_padding = egui::vec2(12.0, 6.0);
@@ -529,22 +546,183 @@ fn build_hud(ctx: &egui::Context, world: &mut World) {
     style.visuals.override_text_color = Some(text);
     ctx.set_style(style);
 
-    // Top-left: Stats panel
+    match world.phase {
+        GamePhase::TitleScreen => build_title_screen(ctx, world, logo, bg, surface, border, text, heading, info),
+        GamePhase::PathogenSelect => build_pathogen_select(ctx, world, bg, surface, border, text, muted, heading, success, danger, info, warning),
+        GamePhase::DifficultySelect => build_difficulty_select(ctx, world, bg, surface, border, text, heading, info),
+        GamePhase::SelectOrigin | GamePhase::Playing | GamePhase::Won | GamePhase::Lost => {
+            build_gameplay_hud(ctx, world, bg, surface, border, text, muted, heading, success, danger, info, warning);
+        }
+    }
+}
+
+fn build_title_screen(
+    ctx: &egui::Context, world: &mut World, logo: Option<&egui::TextureHandle>,
+    bg: egui::Color32, surface: egui::Color32, border: egui::Color32,
+    text: egui::Color32, heading: egui::Color32, info: egui::Color32,
+) {
+    egui::CentralPanel::default()
+        .frame(egui::Frame::new().fill(bg))
+        .show(ctx, |ui| {
+            ui.vertical_centered(|ui| {
+                ui.add_space(80.0);
+
+                // Logo
+                if let Some(tex) = logo {
+                    ui.image(tex);
+                } else {
+                    ui.label(egui::RichText::new("EPIDEMIC").size(48.0).strong().color(heading));
+                    ui.label(egui::RichText::new("Natural Strategies").size(18.0).color(egui::Color32::from_rgb(161, 161, 170)));
+                }
+
+                ui.add_space(60.0);
+
+                // New Game button
+                let btn = egui::Button::new(
+                    egui::RichText::new("NEW GAME").size(18.0).strong().color(heading)
+                )
+                .min_size(egui::vec2(200.0, 48.0))
+                .fill(info)
+                .corner_radius(egui::CornerRadius::same(8));
+                if ui.add(btn).clicked() {
+                    world.phase = GamePhase::PathogenSelect;
+                }
+
+                ui.add_space(16.0);
+
+                // Version
+                ui.label(egui::RichText::new("v0.1.0 — Open Source").size(11.0).color(egui::Color32::from_rgb(73, 80, 87)));
+            });
+        });
+}
+
+fn build_pathogen_select(
+    ctx: &egui::Context, world: &mut World,
+    bg: egui::Color32, surface: egui::Color32, border: egui::Color32,
+    text: egui::Color32, muted: egui::Color32, heading: egui::Color32,
+    success: egui::Color32, danger: egui::Color32, info: egui::Color32, warning: egui::Color32,
+) {
+    egui::CentralPanel::default()
+        .frame(egui::Frame::new().fill(bg).inner_margin(egui::Margin::same(40)))
+        .show(ctx, |ui| {
+            ui.vertical_centered(|ui| {
+                ui.label(egui::RichText::new("SELECT PATHOGEN").size(24.0).strong().color(heading));
+                ui.add_space(24.0);
+
+                let pathogens = [
+                    (epidemic_core::PathogenType::Bacteria, "Standard pathogen. Cheap to devolve.", success),
+                    (epidemic_core::PathogenType::Virus, "Random mutations. Uncontrollable.", danger),
+                    (epidemic_core::PathogenType::Fungus, "Slow spread. Launch spores.", egui::Color32::from_rgb(139, 90, 43)),
+                    (epidemic_core::PathogenType::Parasite, "Stealth. Low severity.", egui::Color32::from_rgb(100, 140, 100)),
+                    (epidemic_core::PathogenType::Prion, "Slow infection. Slows cure.", egui::Color32::from_rgb(120, 80, 160)),
+                    (epidemic_core::PathogenType::NanoVirus, "Cure starts immediately.", info),
+                    (epidemic_core::PathogenType::BioWeapon, "Innate lethality. Suppress it.", danger),
+                ];
+
+                egui::Grid::new("pathogen_grid")
+                    .num_columns(2)
+                    .spacing([16.0, 12.0])
+                    .show(ui, |ui| {
+                        for (i, (ptype, desc, color)) in pathogens.iter().enumerate() {
+                            let card = egui::Frame::new()
+                                .fill(surface)
+                                .corner_radius(egui::CornerRadius::same(8))
+                                .stroke(egui::Stroke::new(1.0, border))
+                                .inner_margin(egui::Margin::same(16));
+
+                            card.show(ui, |ui| {
+                                ui.set_min_width(280.0);
+                                ui.label(egui::RichText::new(ptype.name()).size(16.0).strong().color(*color));
+                                ui.add_space(4.0);
+                                ui.label(egui::RichText::new(*desc).size(12.0).color(muted));
+                                ui.add_space(8.0);
+                                let btn = egui::Button::new(
+                                    egui::RichText::new("SELECT").size(12.0).strong().color(heading)
+                                )
+                                .fill(*color)
+                                .corner_radius(egui::CornerRadius::same(6));
+                                if ui.add(btn).clicked() {
+                                    world.init_disease("Epidemic", *ptype);
+                                    world.phase = GamePhase::DifficultySelect;
+                                }
+                            });
+
+                            if (i + 1) % 2 == 0 {
+                                ui.end_row();
+                            }
+                        }
+                    });
+            });
+        });
+}
+
+fn build_difficulty_select(
+    ctx: &egui::Context, world: &mut World,
+    bg: egui::Color32, surface: egui::Color32, border: egui::Color32,
+    text: egui::Color32, heading: egui::Color32, info: egui::Color32,
+) {
+    egui::CentralPanel::default()
+        .frame(egui::Frame::new().fill(bg).inner_margin(egui::Margin::same(40)))
+        .show(ctx, |ui| {
+            ui.vertical_centered(|ui| {
+                ui.label(egui::RichText::new("SELECT DIFFICULTY").size(24.0).strong().color(heading));
+                ui.add_space(8.0);
+                ui.label(egui::RichText::new(format!("Pathogen: {}", world.disease.pathogen_type.name()))
+                    .size(14.0).color(egui::Color32::from_rgb(161, 161, 170)));
+                ui.add_space(32.0);
+
+                let difficulties = [
+                    (epidemic_core::Difficulty::Casual, "Easy. Slower cure, weaker borders.", egui::Color32::from_rgb(4, 120, 87)),
+                    (epidemic_core::Difficulty::Normal, "Standard challenge.", info),
+                    (epidemic_core::Difficulty::Brutal, "Faster cure, stronger borders.", egui::Color32::from_rgb(180, 83, 9)),
+                    (epidemic_core::Difficulty::MegaBrutal, "Extreme. For masochists.", egui::Color32::from_rgb(231, 0, 11)),
+                ];
+
+                for (diff, desc, color) in difficulties {
+                    let card = egui::Frame::new()
+                        .fill(surface)
+                        .corner_radius(egui::CornerRadius::same(8))
+                        .stroke(egui::Stroke::new(1.0, border))
+                        .inner_margin(egui::Margin::same(16));
+
+                    card.show(ui, |ui| {
+                        ui.set_min_width(400.0);
+                        ui.horizontal(|ui| {
+                            ui.label(egui::RichText::new(diff.name()).size(16.0).strong().color(color));
+                            ui.add_space(16.0);
+                            ui.label(egui::RichText::new(desc).size(12.0).color(egui::Color32::from_rgb(161, 161, 170)));
+                            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                                let btn = egui::Button::new(
+                                    egui::RichText::new("SELECT").size(12.0).strong().color(heading)
+                                )
+                                .fill(color)
+                                .corner_radius(egui::CornerRadius::same(6));
+                                if ui.add(btn).clicked() {
+                                    world.difficulty = diff;
+                                    world.phase = GamePhase::SelectOrigin;
+                                }
+                            });
+                        });
+                    });
+                    ui.add_space(8.0);
+                }
+            });
+        });
+}
+
+fn build_gameplay_hud(
+    ctx: &egui::Context, world: &mut World,
+    bg: egui::Color32, surface: egui::Color32, border: egui::Color32,
+    text: egui::Color32, muted: egui::Color32, heading: egui::Color32,
+    success: egui::Color32, danger: egui::Color32, info: egui::Color32, warning: egui::Color32,
+) {
+    // Left stats panel
     egui::SidePanel::left("stats")
         .exact_width(240.0)
-        .frame(egui::Frame::new()
-            .fill(bg)
-            .stroke(egui::Stroke::new(1.0, border))
-            .inner_margin(egui::Margin::same(16)))
+        .frame(egui::Frame::new().fill(bg).stroke(egui::Stroke::new(1.0, border)).inner_margin(egui::Margin::same(16)))
         .show(ctx, |ui| {
-            // Title
-            ui.label(egui::RichText::new("EPIDEMIC NS")
-                .size(20.0)
-                .strong()
-                .color(heading));
+            ui.label(egui::RichText::new("EPIDEMIC NS").size(20.0).strong().color(heading));
             ui.add_space(4.0);
-
-            // Tick & speed
             ui.horizontal(|ui| {
                 ui.label(egui::RichText::new(format!("Tick {}", world.tick)).color(muted).size(12.0));
                 ui.separator();
@@ -555,256 +733,134 @@ fn build_hud(ctx: &egui::Context, world: &mut World) {
             ui.separator();
             ui.add_space(8.0);
 
-            // Population stats — card style
-            egui::Frame::new()
-                .fill(surface)
-                .corner_radius(egui::CornerRadius::same(8))
-                .inner_margin(egui::Margin::same(12))
-                .show(ui, |ui| {
-                    ui.label(egui::RichText::new("Population").size(11.0).color(muted).strong());
-                    ui.add_space(4.0);
-
-                    stat_row(ui, "Healthy", &format_num(world.total_healthy), success);
-                    stat_row(ui, "Infected", &format_num(world.total_infected), danger);
-                    stat_row(ui, "Dead", &format_num(world.total_dead), egui::Color32::from_rgb(108, 117, 125));
-                });
+            egui::Frame::new().fill(surface).corner_radius(egui::CornerRadius::same(8)).inner_margin(egui::Margin::same(12)).show(ui, |ui| {
+                ui.label(egui::RichText::new("Population").size(11.0).color(muted).strong());
+                ui.add_space(4.0);
+                stat_row(ui, "Healthy", &format_num(world.total_healthy), success);
+                stat_row(ui, "Infected", &format_num(world.total_infected), danger);
+                stat_row(ui, "Dead", &format_num(world.total_dead), egui::Color32::from_rgb(108, 117, 125));
+            });
 
             ui.add_space(8.0);
 
-            // DNA points — card style
-            egui::Frame::new()
-                .fill(surface)
-                .corner_radius(egui::CornerRadius::same(8))
-                .inner_margin(egui::Margin::same(12))
-                .show(ui, |ui| {
-                    ui.label(egui::RichText::new("DNA Points").size(11.0).color(muted).strong());
-                    ui.add_space(2.0);
-                    ui.label(egui::RichText::new(format!("{}", world.dna_points))
-                        .size(24.0)
-                        .strong()
-                        .color(info));
-                });
+            egui::Frame::new().fill(surface).corner_radius(egui::CornerRadius::same(8)).inner_margin(egui::Margin::same(12)).show(ui, |ui| {
+                ui.label(egui::RichText::new("DNA Points").size(11.0).color(muted).strong());
+                ui.add_space(2.0);
+                ui.label(egui::RichText::new(format!("{}", world.dna_points)).size(24.0).strong().color(info));
+            });
 
             ui.add_space(8.0);
 
-            // Cure progress — card style
-            egui::Frame::new()
-                .fill(surface)
-                .corner_radius(egui::CornerRadius::same(8))
-                .inner_margin(egui::Margin::same(12))
-                .show(ui, |ui| {
-                    ui.label(egui::RichText::new("Cure Progress").size(11.0).color(muted).strong());
-                    ui.add_space(4.0);
-                    let cure_bar = egui::ProgressBar::new(world.cure_progress / 100.0)
-                        .fill(info)
-                        .corner_radius(egui::CornerRadius::same(4));
-                    ui.add(cure_bar);
-                    ui.label(egui::RichText::new(format!("{:.1}%", world.cure_progress))
-                        .size(12.0)
-                        .color(info));
-                });
+            egui::Frame::new().fill(surface).corner_radius(egui::CornerRadius::same(8)).inner_margin(egui::Margin::same(12)).show(ui, |ui| {
+                ui.label(egui::RichText::new("Cure Progress").size(11.0).color(muted).strong());
+                ui.add_space(4.0);
+                ui.add(egui::ProgressBar::new(world.cure_progress / 100.0).fill(info).corner_radius(egui::CornerRadius::same(4)));
+                ui.label(egui::RichText::new(format!("{:.1}%", world.cure_progress)).size(12.0).color(info));
+            });
 
             ui.add_space(8.0);
 
-            // Disease stats
-            egui::Frame::new()
-                .fill(surface)
-                .corner_radius(egui::CornerRadius::same(8))
-                .inner_margin(egui::Margin::same(12))
-                .show(ui, |ui| {
-                    ui.label(egui::RichText::new(format!("Disease: {}", world.disease.name))
-                        .size(11.0).color(muted).strong());
-                    ui.add_space(4.0);
-                    stat_row(ui, "Infectivity", &format!("{:.1}", world.disease.effective_infectivity()), danger);
-                    stat_row(ui, "Severity", &format!("{:.1}", world.disease.effective_severity()), warning);
-                    stat_row(ui, "Lethality", &format!("{:.1}", world.disease.effective_lethality()), egui::Color32::from_rgb(180, 30, 30));
-                });
+            egui::Frame::new().fill(surface).corner_radius(egui::CornerRadius::same(8)).inner_margin(egui::Margin::same(12)).show(ui, |ui| {
+                ui.label(egui::RichText::new(format!("Disease: {}", world.disease.name)).size(11.0).color(muted).strong());
+                ui.add_space(4.0);
+                stat_row(ui, "Infectivity", &format!("{:.1}", world.disease.effective_infectivity()), danger);
+                stat_row(ui, "Severity", &format!("{:.1}", world.disease.effective_severity()), warning);
+                stat_row(ui, "Lethality", &format!("{:.1}", world.disease.effective_lethality()), egui::Color32::from_rgb(180, 30, 30));
+            });
 
             ui.add_space(8.0);
 
-            // Speed controls — Moo UI button style
             ui.label(egui::RichText::new("Speed").size(11.0).color(muted).strong());
             ui.add_space(4.0);
             ui.horizontal(|ui| {
                 for (label, speed) in [("1x", 1), ("2x", 2), ("3x", 3)] {
                     let active = world.game_speed == speed;
-                    let btn = egui::Button::new(
-                        egui::RichText::new(label).size(13.0).color(if active { heading } else { text })
-                    )
-                    .fill(if active { info } else { surface })
-                    .corner_radius(egui::CornerRadius::same(6))
-                    .stroke(egui::Stroke::new(1.0, if active { info } else { border }));
-                    if ui.add(btn).clicked() {
-                        world.game_speed = speed;
-                    }
+                    let btn = egui::Button::new(egui::RichText::new(label).size(13.0).color(if active { heading } else { text }))
+                        .fill(if active { info } else { surface })
+                        .corner_radius(egui::CornerRadius::same(6))
+                        .stroke(egui::Stroke::new(1.0, if active { info } else { border }));
+                    if ui.add(btn).clicked() { world.game_speed = speed; }
                 }
             });
 
             ui.add_space(12.0);
 
-            // Game phase
             match world.phase {
                 GamePhase::SelectOrigin => {
-                    egui::Frame::new()
-                        .fill(egui::Color32::from_rgba_premultiplied(180, 83, 9, 30))
-                        .corner_radius(egui::CornerRadius::same(8))
-                        .inner_margin(egui::Margin::same(12))
-                        .show(ui, |ui| {
-                            ui.label(egui::RichText::new("Select a country to begin the outbreak")
-                                .size(12.0)
-                                .color(warning));
-                        });
+                    egui::Frame::new().fill(egui::Color32::from_rgba_premultiplied(180, 83, 9, 30)).corner_radius(egui::CornerRadius::same(8)).inner_margin(egui::Margin::same(12)).show(ui, |ui| {
+                        ui.label(egui::RichText::new("Select a country to begin the outbreak").size(12.0).color(warning));
+                    });
                 }
                 GamePhase::Playing => {
-                    egui::Frame::new()
-                        .fill(egui::Color32::from_rgba_premultiplied(231, 0, 11, 20))
-                        .corner_radius(egui::CornerRadius::same(8))
-                        .inner_margin(egui::Margin::same(12))
-                        .show(ui, |ui| {
-                            ui.label(egui::RichText::new("OUTBREAK ACTIVE")
-                                .size(12.0)
-                                .strong()
-                                .color(danger));
-                        });
+                    egui::Frame::new().fill(egui::Color32::from_rgba_premultiplied(231, 0, 11, 20)).corner_radius(egui::CornerRadius::same(8)).inner_margin(egui::Margin::same(12)).show(ui, |ui| {
+                        ui.label(egui::RichText::new("OUTBREAK ACTIVE").size(12.0).strong().color(danger));
+                    });
                 }
                 GamePhase::Won => {
-                    ui.label(egui::RichText::new("Humanity has fallen.")
-                        .size(14.0)
-                        .strong()
-                        .color(success));
+                    ui.label(egui::RichText::new("Humanity has fallen.").size(14.0).strong().color(success));
                 }
                 GamePhase::Lost => {
-                    ui.label(egui::RichText::new("Cure completed.")
-                        .size(14.0)
-                        .strong()
-                        .color(info));
+                    ui.label(egui::RichText::new("Cure completed.").size(14.0).strong().color(info));
                 }
+                _ => {}
             }
         });
 
-    // Bottom: News ticker
+    // Bottom news ticker
     egui::TopBottomPanel::bottom("news")
         .exact_height(36.0)
-        .frame(egui::Frame::new()
-            .fill(bg)
-            .stroke(egui::Stroke::new(1.0, border))
-            .inner_margin(egui::Margin::symmetric(16, 8)))
+        .frame(egui::Frame::new().fill(bg).stroke(egui::Stroke::new(1.0, border)).inner_margin(egui::Margin::symmetric(16, 8)))
         .show(ctx, |ui| {
             ui.horizontal_centered(|ui| {
                 if let Some(msg) = world.news.last() {
-                    ui.label(egui::RichText::new(format!("BREAKING: {msg}"))
-                        .size(12.0)
-                        .color(warning));
+                    ui.label(egui::RichText::new(format!("BREAKING: {msg}")).size(12.0).color(warning));
                 } else {
-                    ui.label(egui::RichText::new("No active reports")
-                        .size(12.0)
-                        .color(muted));
+                    ui.label(egui::RichText::new("No active reports").size(12.0).color(muted));
                 }
             });
         });
 
-    // Right panel: Evolution menu (only during gameplay)
+    // Right panel: Evolution menu
     if world.phase == GamePhase::Playing {
         egui::SidePanel::right("evolution")
             .exact_width(260.0)
-            .frame(egui::Frame::new()
-                .fill(bg)
-                .stroke(egui::Stroke::new(1.0, border))
-                .inner_margin(egui::Margin::same(12)))
+            .frame(egui::Frame::new().fill(bg).stroke(egui::Stroke::new(1.0, border)).inner_margin(egui::Margin::same(12)))
             .show(ctx, |ui| {
                 ui.label(egui::RichText::new("EVOLUTION").size(16.0).strong().color(heading));
                 ui.add_space(4.0);
-                ui.label(egui::RichText::new(format!("DNA: {}", world.dna_points))
-                    .size(13.0).color(info));
+                ui.label(egui::RichText::new(format!("DNA: {}", world.dna_points)).size(13.0).color(info));
                 ui.add_space(8.0);
 
-                // Transmission upgrades
-                egui::CollapsingHeader::new(
-                    egui::RichText::new("Transmission").color(success).strong()
-                ).default_open(true).show(ui, |ui| {
-                    for upgrade in &world.upgrades {
-                        if upgrade.category != epidemic_core::UpgradeCategory::Transmission {
-                            continue;
-                        }
-                        let owned = world.disease.has_upgrade(upgrade.id);
-                        let can_buy = world.disease.can_unlock(upgrade) && world.dna_points >= upgrade.cost;
-                        let color = if owned { success } else if can_buy { text } else { muted };
-                        let prefix = if owned { "\u{2713} " } else { "" };
-                        ui.horizontal(|ui| {
-                            let label = format!("{prefix}{} ({})", upgrade.name, upgrade.cost);
-                            if owned {
-                                ui.label(egui::RichText::new(label).size(12.0).color(color));
-                            } else if can_buy {
-                                if ui.button(egui::RichText::new(label).size(12.0).color(color)).clicked() {
-                                    world.dna_points -= upgrade.cost;
-                                    world.disease.unlock(upgrade);
+                for (cat_name, cat_color, cat) in [
+                    ("Transmission", success, epidemic_core::UpgradeCategory::Transmission),
+                    ("Symptoms", warning, epidemic_core::UpgradeCategory::Symptom),
+                    ("Abilities", info, epidemic_core::UpgradeCategory::Ability),
+                ] {
+                    egui::CollapsingHeader::new(egui::RichText::new(cat_name).color(cat_color).strong())
+                        .default_open(true).show(ui, |ui| {
+                        for upgrade in &world.upgrades {
+                            if upgrade.category != cat { continue; }
+                            let owned = world.disease.has_upgrade(upgrade.id);
+                            let can_buy = world.disease.can_unlock(upgrade) && world.dna_points >= upgrade.cost;
+                            let color = if owned { success } else if can_buy { text } else { muted };
+                            let prefix = if owned { "\u{2713} " } else { "" };
+                            ui.horizontal(|ui| {
+                                let label = format!("{prefix}{} ({})", upgrade.name, upgrade.cost);
+                                if owned {
+                                    ui.label(egui::RichText::new(label).size(12.0).color(color));
+                                } else if can_buy {
+                                    if ui.button(egui::RichText::new(label).size(12.0).color(color)).clicked() {
+                                        world.dna_points -= upgrade.cost;
+                                        world.disease.unlock(upgrade);
+                                    }
+                                } else {
+                                    ui.label(egui::RichText::new(label).size(12.0).color(color));
                                 }
-                            } else {
-                                ui.label(egui::RichText::new(label).size(12.0).color(color));
-                            }
-                        });
-                    }
-                });
-
-                ui.add_space(4.0);
-
-                // Symptom upgrades
-                egui::CollapsingHeader::new(
-                    egui::RichText::new("Symptoms").color(warning).strong()
-                ).default_open(true).show(ui, |ui| {
-                    for upgrade in &world.upgrades {
-                        if upgrade.category != epidemic_core::UpgradeCategory::Symptom {
-                            continue;
+                            });
                         }
-                        let owned = world.disease.has_upgrade(upgrade.id);
-                        let can_buy = world.disease.can_unlock(upgrade) && world.dna_points >= upgrade.cost;
-                        let color = if owned { success } else if can_buy { text } else { muted };
-                        let prefix = if owned { "\u{2713} " } else { "" };
-                        ui.horizontal(|ui| {
-                            let label = format!("{prefix}{} ({})", upgrade.name, upgrade.cost);
-                            if owned {
-                                ui.label(egui::RichText::new(label).size(12.0).color(color));
-                            } else if can_buy {
-                                if ui.button(egui::RichText::new(label).size(12.0).color(color)).clicked() {
-                                    world.dna_points -= upgrade.cost;
-                                    world.disease.unlock(upgrade);
-                                }
-                            } else {
-                                ui.label(egui::RichText::new(label).size(12.0).color(color));
-                            }
-                        });
-                    }
-                });
-
-                ui.add_space(4.0);
-
-                // Ability upgrades
-                egui::CollapsingHeader::new(
-                    egui::RichText::new("Abilities").color(info).strong()
-                ).default_open(true).show(ui, |ui| {
-                    for upgrade in &world.upgrades {
-                        if upgrade.category != epidemic_core::UpgradeCategory::Ability {
-                            continue;
-                        }
-                        let owned = world.disease.has_upgrade(upgrade.id);
-                        let can_buy = world.disease.can_unlock(upgrade) && world.dna_points >= upgrade.cost;
-                        let color = if owned { success } else if can_buy { text } else { muted };
-                        let prefix = if owned { "\u{2713} " } else { "" };
-                        ui.horizontal(|ui| {
-                            let label = format!("{prefix}{} ({})", upgrade.name, upgrade.cost);
-                            if owned {
-                                ui.label(egui::RichText::new(label).size(12.0).color(color));
-                            } else if can_buy {
-                                if ui.button(egui::RichText::new(label).size(12.0).color(color)).clicked() {
-                                    world.dna_points -= upgrade.cost;
-                                    world.disease.unlock(upgrade);
-                                }
-                            } else {
-                                ui.label(egui::RichText::new(label).size(12.0).color(color));
-                            }
-                        });
-                    }
-                });
+                    });
+                    ui.add_space(4.0);
+                }
             });
     }
 }
@@ -816,6 +872,14 @@ fn stat_row(ui: &mut egui::Ui, label: &str, value: &str, color: egui::Color32) {
             ui.label(egui::RichText::new(value).size(13.0).strong().color(color));
         });
     });
+}
+
+fn load_logo() -> Result<image::RgbaImage, Box<dyn std::error::Error>> {
+    let img = image::open("../assets/EPIDEMIC.png")
+        .or_else(|_| image::open("assets/EPIDEMIC.png"))
+        .or_else(|_| image::open("../Assets/EPIDEMIC.png"))
+        .or_else(|_| image::open("Assets/EPIDEMIC.png"))?;
+    Ok(img.to_rgba8())
 }
 
 fn format_num(n: u64) -> String {

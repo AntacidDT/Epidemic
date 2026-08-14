@@ -8,4 +8,4 @@ pub mod world;
 pub use disease::{Disease, PathogenType, Upgrade, UpgradeCategory, all_upgrades};
 pub use regions::Region;
 pub use sim::GameState;
-pub use world::{GamePhase, World};
+pub use world::{Difficulty, GamePhase, World};

@@ -21,6 +21,45 @@ pub struct World {
     pub upgrades: Vec<Upgrade>,   // all available upgrades
     pub events: Vec<GameEvent>,
     pub dna_bubbles: Vec<DnaBubble>,
+    pub difficulty: Difficulty,
+    pub disease_name: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Difficulty {
+    Casual,
+    Normal,
+    Brutal,
+    MegaBrutal,
+}
+
+impl Difficulty {
+    pub fn name(&self) -> &str {
+        match self {
+            Self::Casual => "Casual",
+            Self::Normal => "Normal",
+            Self::Brutal => "Brutal",
+            Self::MegaBrutal => "Mega Brutal",
+        }
+    }
+
+    pub fn cure_speed_mult(&self) -> f32 {
+        match self {
+            Self::Casual => 0.5,
+            Self::Normal => 1.0,
+            Self::Brutal => 1.5,
+            Self::MegaBrutal => 2.0,
+        }
+    }
+
+    pub fn border_close_mult(&self) -> f32 {
+        match self {
+            Self::Casual => 0.5,
+            Self::Normal => 1.0,
+            Self::Brutal => 1.5,
+            Self::MegaBrutal => 2.0,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -52,6 +91,9 @@ pub struct DnaBubble {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum GamePhase {
+    TitleScreen,
+    PathogenSelect,
+    DifficultySelect,
     SelectOrigin,
     Playing,
     Won,
@@ -108,11 +150,14 @@ impl World {
             upgrades: all_upgrades(),
             events: Vec::new(),
             dna_bubbles: Vec::new(),
+            difficulty: Difficulty::Normal,
+            disease_name: "Epidemic".to_string(),
         }
     }
 
     pub fn init_disease(&mut self, name: &str, pathogen_type: PathogenType) {
         self.disease = Disease::new(name, pathogen_type);
+        self.disease_name = name.to_string();
     }
 
     /// Start outbreak in a region by ID.
