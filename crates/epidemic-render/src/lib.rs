@@ -413,6 +413,9 @@ fn build_ui(ctx: &egui::Context, world: &mut World, logo: Option<&egui::TextureH
             build_gameplay_hud(ctx, world, bg, surface, surface2, border, text, muted, heading, accent, success, danger, info, warning, hovered_region);
             build_hover_tooltip(ctx, world, hovered_region, bg, surface, border, text, muted, heading, success, danger);
             build_country_detail(ctx, world, bg, surface, surface2, border, text, muted, heading, accent, success, danger, info, warning);
+            if world.show_evolution {
+                build_evolution_menu(ctx, world, bg, surface, surface2, border, text, muted, heading, accent, accent2, success, danger, info, warning);
+            }
         }
         GamePhase::Won | GamePhase::Lost => {
             build_gameplay_hud(ctx, world, bg, surface, surface2, border, text, muted, heading, accent, success, danger, info, warning, hovered_region);
@@ -709,6 +712,18 @@ fn build_gameplay_hud(ctx: &egui::Context, world: &mut World,
                 }
             });
 
+            ui.add_space(6.0);
+
+            // Evolve button
+            let evo_btn = egui::Button::new(egui::RichText::new("EVOLVE [E]").size(12.0).strong().color(heading))
+                .min_size(egui::vec2(ui.available_width(), 36.0))
+                .fill(accent)
+                .corner_radius(egui::CornerRadius::same(8));
+            if ui.add(evo_btn).clicked() {
+                world.show_evolution = !world.show_evolution;
+                world.selected_upgrade = None;
+            }
+
             ui.add_space(10.0);
 
             // Phase indicator
@@ -752,51 +767,6 @@ fn build_gameplay_hud(ctx: &egui::Context, world: &mut World,
             });
         });
 
-    // ─── Right: Evolution ───
-    if world.phase == GamePhase::Playing {
-        egui::SidePanel::right("evolution").exact_width(240.0)
-            .frame(egui::Frame::new().fill(bg).stroke(egui::Stroke::new(1.0, border)).inner_margin(egui::Margin::same(12)))
-            .show(ctx, |ui| {
-                ui.horizontal(|ui| {
-                    ui.label(egui::RichText::new("EVOLUTION").size(14.0).strong().color(heading));
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        ui.label(egui::RichText::new(format!("{} DNA", world.dna_points)).size(12.0).color(accent));
-                    });
-                });
-                ui.add_space(8.0);
-
-                for (cat_name, cat_color, cat) in [
-                    ("Transmission", success, epidemic_core::UpgradeCategory::Transmission),
-                    ("Symptoms", warning, epidemic_core::UpgradeCategory::Symptom),
-                    ("Abilities", info, epidemic_core::UpgradeCategory::Ability),
-                ] {
-                    egui::CollapsingHeader::new(egui::RichText::new(cat_name).size(12.0).color(cat_color).strong())
-                        .default_open(true).show(ui, |ui| {
-                        for upgrade in &world.upgrades {
-                            if upgrade.category != cat { continue; }
-                            let owned = world.disease.has_upgrade(upgrade.id);
-                            let can_buy = world.disease.can_unlock(upgrade) && world.dna_points >= upgrade.cost;
-                            let color = if owned { success } else if can_buy { text } else { muted };
-                            let prefix = if owned { "\u{2713} " } else { "" };
-                            ui.horizontal(|ui| {
-                                let label = format!("{prefix}{} ({})", upgrade.name, upgrade.cost);
-                                if owned {
-                                    ui.label(egui::RichText::new(label).size(11.0).color(color));
-                                } else if can_buy {
-                                    if ui.button(egui::RichText::new(label).size(11.0).color(color)).clicked() {
-                                        world.dna_points -= upgrade.cost;
-                                        world.disease.unlock(upgrade);
-                                    }
-                                } else {
-                                    ui.label(egui::RichText::new(label).size(11.0).color(color));
-                                }
-                            });
-                        }
-                    });
-                    ui.add_space(4.0);
-                }
-            });
-    }
 }
 
 // ─── Hover Tooltip ───
@@ -837,6 +807,235 @@ fn build_hover_tooltip(ctx: &egui::Context, world: &World, hovered_region: Optio
                 });
         }
     }
+}
+
+// ─── Evolution Menu ───
+fn build_evolution_menu(ctx: &egui::Context, world: &mut World,
+    bg: egui::Color32, surface: egui::Color32, surface2: egui::Color32, border: egui::Color32,
+    text: egui::Color32, muted: egui::Color32, heading: egui::Color32, accent: egui::Color32, accent2: egui::Color32,
+    success: egui::Color32, danger: egui::Color32, info: egui::Color32, warning: egui::Color32) {
+
+    egui::CentralPanel::default()
+        .frame(egui::Frame::new().fill(egui::Color32::from_rgba_premultiplied(0, 0, 0, 180)))
+        .show(ctx, |ui| {
+            // Main panel
+            egui::Frame::new()
+                .fill(surface)
+                .corner_radius(egui::CornerRadius::same(12))
+                .stroke(egui::Stroke::new(1.0, border))
+                .inner_margin(egui::Margin::same(20))
+                .show(ui, |ui| {
+                    ui.set_min_width(ui.available_width());
+
+                    // Header
+                    ui.horizontal(|ui| {
+                        ui.label(egui::RichText::new("EVOLUTION").size(20.0).strong().color(heading));
+                        ui.add_space(16.0);
+                        ui.label(egui::RichText::new(format!("DNA: {}", world.dna_points)).size(16.0).strong().color(accent));
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            let close_btn = egui::Button::new(egui::RichText::new("CLOSE [E]").size(11.0).color(text))
+                                .fill(surface2).corner_radius(egui::CornerRadius::same(6))
+                                .stroke(egui::Stroke::new(1.0, border));
+                            if ui.add(close_btn).clicked() {
+                                world.show_evolution = false;
+                                world.selected_upgrade = None;
+                            }
+                        });
+                    });
+
+                    ui.add_space(12.0);
+
+                    // Tabs
+                    ui.horizontal(|ui| {
+                        for (tab, label, color) in [
+                            (epidemic_core::EvoTab::Transmission, "Transmission", success),
+                            (epidemic_core::EvoTab::Symptoms, "Symptoms", warning),
+                            (epidemic_core::EvoTab::Abilities, "Abilities", info),
+                        ] {
+                            let active = world.evo_tab == tab;
+                            let btn = egui::Button::new(
+                                egui::RichText::new(label).size(13.0).strong().color(if active { heading } else { muted })
+                            )
+                            .fill(if active { color.linear_multiply(0.2) } else { surface2 })
+                            .corner_radius(egui::CornerRadius::same(8))
+                            .stroke(egui::Stroke::new(1.0, if active { color } else { border }));
+                            if ui.add(btn).clicked() {
+                                world.evo_tab = tab;
+                                world.selected_upgrade = None;
+                            }
+                        }
+                    });
+
+                    ui.add_space(12.0);
+                    ui.separator();
+                    ui.add_space(12.0);
+
+                    // Content area: upgrade list + detail panel
+                    ui.horizontal(|ui| {
+                        // Left: upgrade list
+                        ui.vertical(|ui| {
+                            ui.set_min_width(300.0);
+
+                            let upgrades: Vec<_> = world.upgrades.iter()
+                                .filter(|u| u.category == match world.evo_tab {
+                                    epidemic_core::EvoTab::Transmission => epidemic_core::UpgradeCategory::Transmission,
+                                    epidemic_core::EvoTab::Symptoms => epidemic_core::UpgradeCategory::Symptom,
+                                    epidemic_core::EvoTab::Abilities => epidemic_core::UpgradeCategory::Ability,
+                                })
+                                .collect();
+
+                            for upgrade in &upgrades {
+                                let owned = world.disease.has_upgrade(upgrade.id);
+                                let can_unlock = world.disease.can_unlock(upgrade);
+                                let can_afford = world.dna_points >= upgrade.cost;
+                                let available = !owned && can_unlock && can_afford;
+                                let locked = !owned && !can_unlock;
+                                let selected = world.selected_upgrade.as_deref() == Some(upgrade.id);
+
+                                let color = if owned { success }
+                                    else if available { text }
+                                    else { muted };
+
+                                let bg_color = if selected { accent.linear_multiply(0.15) }
+                                    else if owned { success.linear_multiply(0.08) }
+                                    else { surface2 };
+
+                                let stroke = if selected { egui::Stroke::new(1.5, accent) }
+                                    else if owned { egui::Stroke::new(1.0, success.linear_multiply(0.3)) }
+                                    else { egui::Stroke::new(1.0, border) };
+
+                                let card = egui::Frame::new()
+                                    .fill(bg_color)
+                                    .corner_radius(egui::CornerRadius::same(8))
+                                    .stroke(stroke)
+                                    .inner_margin(egui::Margin::symmetric(12, 8));
+
+                                card.show(ui, |ui| {
+                                    ui.set_min_width(280.0);
+                                    ui.horizontal(|ui| {
+                                        // Status icon
+                                        if owned {
+                                            ui.label(egui::RichText::new("\u{2713}").size(14.0).color(success));
+                                        } else if locked {
+                                            ui.label(egui::RichText::new("\u{1F512}").size(14.0).color(muted));
+                                        } else {
+                                            ui.label(egui::RichText::new("\u{25CB}").size(14.0).color(muted));
+                                        }
+
+                                        ui.add_space(4.0);
+
+                                        // Name
+                                        ui.label(egui::RichText::new(upgrade.name).size(13.0).strong().color(color));
+
+                                        // Cost
+                                        if !owned {
+                                            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                                                let cost_color = if can_afford { accent } else { muted };
+                                                ui.label(egui::RichText::new(format!("{} DNA", upgrade.cost)).size(11.0).color(cost_color));
+                                            });
+                                        }
+                                    });
+                                });
+
+                                // Click to select
+                                if ui.interact(ui.min_rect(), egui::Id::new(upgrade.id), egui::Sense::click()).clicked() {
+                                    world.selected_upgrade = Some(upgrade.id.to_string());
+                                }
+
+                                ui.add_space(4.0);
+                            }
+                        });
+
+                        ui.add_space(16.0);
+
+                        // Right: detail panel
+                        egui::Frame::new()
+                            .fill(surface2)
+                            .corner_radius(egui::CornerRadius::same(10))
+                            .stroke(egui::Stroke::new(1.0, border))
+                            .inner_margin(egui::Margin::same(16))
+                            .show(ui, |ui| {
+                                ui.set_min_width(240.0);
+                                ui.set_min_height(300.0);
+
+                                if let Some(ref sel_id) = world.selected_upgrade.clone() {
+                                    if let Some(upgrade) = world.upgrades.iter().find(|u| u.id == sel_id.as_str()) {
+                                        let owned = world.disease.has_upgrade(upgrade.id);
+                                        let can_unlock = world.disease.can_unlock(upgrade);
+                                        let can_afford = world.dna_points >= upgrade.cost;
+
+                                        // Title
+                                        ui.label(egui::RichText::new(upgrade.name).size(18.0).strong().color(heading));
+                                        ui.add_space(8.0);
+
+                                        // Description
+                                        ui.label(egui::RichText::new(upgrade.description).size(12.0).color(text));
+                                        ui.add_space(12.0);
+
+                                        // Stats
+                                        ui.label(egui::RichText::new("EFFECTS").size(11.0).strong().color(muted));
+                                        ui.add_space(4.0);
+                                        if upgrade.infectivity > 0.0 {
+                                            ui.label(egui::RichText::new(format!("+{:.1} Infectivity", upgrade.infectivity)).size(12.0).color(danger));
+                                        }
+                                        if upgrade.severity > 0.0 {
+                                            ui.label(egui::RichText::new(format!("+{:.1} Severity", upgrade.severity)).size(12.0).color(warning));
+                                        }
+                                        if upgrade.lethality > 0.0 {
+                                            ui.label(egui::RichText::new(format!("+{:.1} Lethality", upgrade.lethality)).size(12.0).color(egui::Color32::from_rgb(200, 40, 40)));
+                                        }
+
+                                        ui.add_space(8.0);
+
+                                        // Prerequisites
+                                        if !upgrade.requires.is_empty() {
+                                            ui.label(egui::RichText::new("REQUIRES").size(11.0).strong().color(muted));
+                                            ui.add_space(4.0);
+                                            for req in &upgrade.requires {
+                                                let req_owned = world.disease.has_upgrade(req);
+                                                let req_name = world.upgrades.iter().find(|u| u.id == *req).map(|u| u.name).unwrap_or(req);
+                                                let color = if req_owned { success } else { danger };
+                                                let icon = if req_owned { "\u{2713}" } else { "\u{2717}" };
+                                                ui.label(egui::RichText::new(format!("{icon} {req_name}")).size(12.0).color(color));
+                                            }
+                                            ui.add_space(8.0);
+                                        }
+
+                                        // Cost
+                                        ui.label(egui::RichText::new(format!("Cost: {} DNA", upgrade.cost)).size(13.0).strong().color(accent));
+
+                                        ui.add_space(16.0);
+
+                                        // Upgrade button
+                                        if owned {
+                                            ui.label(egui::RichText::new("UNLOCKED").size(14.0).strong().color(success));
+                                        } else if can_unlock && can_afford {
+                                            let btn = egui::Button::new(
+                                                egui::RichText::new(format!("UPGRADE — {} DNA", upgrade.cost)).size(14.0).strong().color(heading)
+                                            )
+                                            .min_size(egui::vec2(ui.available_width(), 40.0))
+                                            .fill(accent)
+                                            .corner_radius(egui::CornerRadius::same(8));
+                                            if ui.add(btn).clicked() {
+                                                world.dna_points -= upgrade.cost;
+                                                world.disease.unlock(upgrade);
+                                            }
+                                        } else if can_unlock && !can_afford {
+                                            ui.label(egui::RichText::new("Not enough DNA").size(12.0).color(muted));
+                                        } else {
+                                            ui.label(egui::RichText::new("Locked — unlock prerequisites first").size(12.0).color(muted));
+                                        }
+                                    }
+                                } else {
+                                    ui.vertical_centered(|ui| {
+                                        ui.add_space(80.0);
+                                        ui.label(egui::RichText::new("Select an upgrade").size(14.0).color(muted));
+                                    });
+                                }
+                            });
+                    });
+                });
+        });
 }
 
 // ─── Country Detail Panel ───
@@ -1114,6 +1313,12 @@ impl ApplicationHandler for App {
                     winit::keyboard::KeyCode::Digit1 => { self.world.game_speed = 1; self.sim_interval_ms = BASE_SIM_INTERVAL; }
                     winit::keyboard::KeyCode::Digit2 => { self.world.game_speed = 2; self.sim_interval_ms = BASE_SIM_INTERVAL / 2; }
                     winit::keyboard::KeyCode::Digit3 => { self.world.game_speed = 3; self.sim_interval_ms = BASE_SIM_INTERVAL / 4; }
+                    winit::keyboard::KeyCode::KeyE => {
+                        if self.world.phase == GamePhase::Playing {
+                            self.world.show_evolution = !self.world.show_evolution;
+                            self.world.selected_upgrade = None;
+                        }
+                    }
                     _ => {}
                 }
             }

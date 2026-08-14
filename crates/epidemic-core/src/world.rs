@@ -326,6 +326,16 @@ pub struct World {
     pub global_panic: f32,             // 0-1.0 average
     pub game_type: GameType,
     pub selected_detail: Option<u16>,  // region ID for detail panel
+    pub show_evolution: bool,          // evolution menu open
+    pub evo_tab: EvoTab,              // current evolution tab
+    pub selected_upgrade: Option<String>, // currently selected upgrade ID
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum EvoTab {
+    Transmission,
+    Symptoms,
+    Abilities,
 }
 
 impl World {
@@ -369,6 +379,9 @@ impl World {
             global_panic: 0.0,
             game_type: GameType::Campaign,
             selected_detail: None,
+            show_evolution: false,
+            evo_tab: EvoTab::Transmission,
+            selected_upgrade: None,
         }
     }
 

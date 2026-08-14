@@ -11,6 +11,6 @@ pub use regions::{Region, Climate, Density, GovernmentType};
 pub use save::{GameScore, SaveData, calculate_score, load_game, save_game};
 pub use sim::GameState;
 pub use world::{
-    CurePhase, Difficulty, DnaBubble, EventType, GameEvent, GamePhase, GameType,
+    CurePhase, Difficulty, DnaBubble, EvoTab, EventType, GameEvent, GamePhase, GameType,
     Season, Synergy, TacticalAbility, TransportEntity, TransportType, World,
 };
