@@ -39,10 +39,10 @@ var map_texture: texture_2d<f32>;
 var map_sampler: sampler;
 
 @group(0) @binding(3)
-var<storage, read> regions: array<RegionData>;
+var<uniform> regions: array<RegionData, 115>;
 
 @group(0) @binding(4)
-var<storage, read> transports: array<TransportData>;
+var<uniform> transports: array<TransportData, 200>;
 
 struct VertexOutput {
     @builtin(position) position: vec4<f32>,
@@ -96,7 +96,7 @@ fn infection_color(pct: f32) -> vec3<f32> {
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    // Read region ID from lookup texture
+    // Read region ID from lookup texture (R8Unorm: 0.0-1.0)
     let tex_color = textureSample(map_texture, map_sampler, in.uv);
     let region_id = u32(tex_color.r * 255.0 + 0.5);
 
