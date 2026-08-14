@@ -596,7 +596,19 @@ fn build_pathogen_select(ctx: &egui::Context, world: &mut World,
             ui.label(egui::RichText::new("SELECT PATHOGEN").size(28.0).strong().color(heading));
             ui.add_space(8.0);
             ui.label(egui::RichText::new(format!("Game: {}", world.game_type.name())).size(13.0).color(muted));
-            ui.add_space(32.0);
+            ui.add_space(16.0);
+
+            // Disease naming
+            ui.label(egui::RichText::new("Name your disease:").size(13.0).color(muted));
+            ui.add_space(4.0);
+            ui.horizontal(|ui| {
+                let text_edit = egui::TextEdit::singleline(&mut world.disease_name_input)
+                    .desired_width(200.0)
+                    .font(egui::TextStyle::Heading);
+                ui.add(text_edit);
+            });
+
+            ui.add_space(24.0);
 
             let pathogens = [
                 (epidemic_core::PathogenType::Bacteria, "Standard pathogen. Cheap to devolve.", success, "Beginner"),
@@ -626,7 +638,12 @@ fn build_pathogen_select(ctx: &egui::Context, world: &mut World,
                             let btn = egui::Button::new(egui::RichText::new("SELECT").size(12.0).strong().color(heading))
                                 .fill(*color).corner_radius(egui::CornerRadius::same(8));
                             if ui.add(btn).clicked() {
-                                world.init_disease("Epidemic", *ptype);
+                                let name = if world.disease_name_input.is_empty() {
+                                    "Epidemic".to_string()
+                                } else {
+                                    world.disease_name_input.clone()
+                                };
+                                world.init_disease(&name, *ptype);
                                 world.phase = GamePhase::DifficultySelect;
                             }
                         });

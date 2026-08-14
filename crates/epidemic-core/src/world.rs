@@ -329,6 +329,12 @@ pub struct World {
     pub show_evolution: bool,          // evolution menu open
     pub evo_tab: EvoTab,              // current evolution tab
     pub selected_upgrade: Option<String>, // currently selected upgrade ID
+    pub disease_name_input: String,      // for naming the disease
+    pub virus_mutation_cooldown: u64,    // Virus: random mutation timer
+    pub fungus_spore_cooldown: u64,      // Fungus: spore burst timer
+    pub parasite_symbiosis: bool,        // Parasite: symbiosis active
+    pub nanovirus_detected: bool,        // NanoVirus: cure started
+    pub bioweapon_suppress: bool,        // BioWeapon: suppressing lethality
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -382,6 +388,12 @@ impl World {
             show_evolution: false,
             evo_tab: EvoTab::Transmission,
             selected_upgrade: None,
+            disease_name_input: String::from("Epidemic"),
+            virus_mutation_cooldown: 0,
+            fungus_spore_cooldown: 0,
+            parasite_symbiosis: true, // starts active
+            nanovirus_detected: false,
+            bioweapon_suppress: false,
         }
     }
 
@@ -417,9 +429,27 @@ impl World {
         self.tick += 1;
         self.season = Season::from_tick(self.tick);
 
-        let infectivity = self.disease.effective_infectivity();
-        let severity = self.disease.effective_severity();
-        let lethality = self.disease.effective_lethality();
+        // ── Pathogen-specific mechanics ──
+        self.pathogen_mechanics();
+
+        let mut infectivity = self.disease.effective_infectivity();
+        let mut severity = self.disease.effective_severity();
+        let mut lethality = self.disease.effective_lethality();
+
+        // Parasite: symbiosis suppresses severity
+        if self.disease.pathogen_type == PathogenType::Parasite && self.parasite_symbiosis {
+            severity *= 0.2; // 80% reduction while symbiosis active
+        }
+
+        // BioWeapon: innate lethality even without symptoms
+        if self.disease.pathogen_type == PathogenType::BioWeapon && !self.bioweapon_suppress {
+            lethality += 0.5; // passive lethality
+        }
+
+        // Virus: mutations increase infectivity randomly
+        if self.disease.pathogen_type == PathogenType::Virus {
+            infectivity *= 1.1; // virus bonus
+        }
 
         // DNA income: earned when infecting NEW countries (not passive)
         // This rewards spreading, not waiting
@@ -480,6 +510,77 @@ impl World {
     // ─────────────────────────────────────────────────────────
     // Per-region infection/death simulation
     // ─────────────────────────────────────────────────────────
+
+    // ─────────────────────────────────────────────────────────
+    // Pathogen-specific unique mechanics
+    // ─────────────────────────────────────────────────────────
+
+    fn pathogen_mechanics(&mut self) {
+        match self.disease.pathogen_type {
+            PathogenType::Virus => {
+                // Random mutations: chance to unlock a random upgrade for free
+                self.virus_mutation_cooldown = self.virus_mutation_cooldown.saturating_sub(1);
+                if self.virus_mutation_cooldown == 0 && self.tick % 100 == 0 {
+                    let roll = pseudo_rand(self.tick, 77, 33);
+                    if roll < 0.15 {
+                        // Find a random unlockable upgrade
+                        let available: Vec<_> = self.upgrades.iter()
+                            .filter(|u| self.disease.can_unlock(u))
+                            .collect();
+                        if let Some(upgrade) = available.first() {
+                            let upgrade = (*upgrade).clone();
+                            self.disease.unlock(&upgrade);
+                            self.news.push(format!("VIRUS MUTATION: {} evolved naturally!", upgrade.name));
+                            self.virus_mutation_cooldown = 300;
+                        }
+                    }
+                }
+            }
+            PathogenType::Fungus => {
+                // Spore burst: can infect a random uninfected country
+                self.fungus_spore_cooldown = self.fungus_spore_cooldown.saturating_sub(1);
+                if self.fungus_spore_cooldown == 0 && self.tick % 200 == 0 && self.dna_points >= 5 {
+                    let uninfected: Vec<u16> = self.regions.iter()
+                        .filter(|r| r.infected == 0 && !r.fallen)
+                        .map(|r| r.id)
+                        .collect();
+                    if !uninfected.is_empty() {
+                        let idx = (pseudo_rand(self.tick, 55, 22) * uninfected.len() as f32) as usize;
+                        let target_id = uninfected[idx.min(uninfected.len() - 1)];
+                        if let Some(r) = self.regions.iter_mut().find(|r| r.id == target_id) {
+                            r.infected = 1;
+                            let name = r.name.clone();
+                            self.news.push(format!("SPORE BURST: Fungus reaches {name}!"));
+                            self.dna_points = self.dna_points.saturating_sub(5);
+                            self.fungus_spore_cooldown = 500;
+                        }
+                    }
+                }
+            }
+            PathogenType::Parasite => {
+                // Symbiosis: player can toggle to suppress severity
+                // Active by default, can be deactivated for more infectivity
+                // (controlled by player via tactical ability)
+            }
+            PathogenType::Prion => {
+                // Slow infection: reduce infection rate but slow cure
+                // Already handled by base stats
+            }
+            PathogenType::NanoVirus => {
+                // Cure starts immediately
+                if !self.nanovirus_detected && self.tick == 1 {
+                    self.nanovirus_detected = true;
+                    self.cure_phase = CurePhase::Research;
+                    self.news.push("NANOVIRUS DETECTED! Cure research begins immediately!".into());
+                }
+            }
+            PathogenType::BioWeapon => {
+                // Suppressed by default, can toggle
+                // Already handled in advance()
+            }
+            _ => {}
+        }
+    }
 
     fn simulate_regions(&mut self, infectivity: f32, _severity: f32, lethality: f32) {
         let season = self.season;
