@@ -1300,21 +1300,105 @@ fn build_endgame_overlay(ctx: &egui::Context, world: &mut World,
                 .stroke(egui::Stroke::new(2.0, if is_win { success } else { danger }))
                 .inner_margin(egui::Margin::same(32))
                 .show(ui, |ui| {
-                    ui.set_min_width(320.0);
+                    ui.set_min_width(360.0);
                     ui.vertical_centered(|ui| {
+                        // Title
                         ui.label(egui::RichText::new(if is_win { "VICTORY" } else { "DEFEATED" })
-                            .size(32.0).strong().color(if is_win { success } else { danger }));
-                        ui.add_space(16.0);
-                        ui.label(egui::RichText::new(format!("Score: {}", score.final_score))
-                            .size(24.0).strong().color(heading));
+                            .size(36.0).strong().color(if is_win { success } else { danger }));
                         ui.add_space(8.0);
+                        ui.label(egui::RichText::new(if is_win {
+                            "Humanity has fallen."
+                        } else {
+                            "The cure was completed."
+                        }).size(14.0).color(muted));
+                        ui.add_space(20.0);
+
+                        // Score
+                        ui.label(egui::RichText::new(format!("{}", score.final_score))
+                            .size(48.0).strong().color(heading));
+                        ui.label(egui::RichText::new("POINTS").size(12.0).color(muted));
+                        ui.add_space(12.0);
+
                         // Biohazards
                         let bio_text = "\u{2620}".repeat(score.biohazards as usize);
-                        ui.label(egui::RichText::new(bio_text).size(20.0).color(accent));
-                        ui.add_space(16.0);
-                        ui.label(egui::RichText::new(format!("Time: {} ticks", world.tick)).size(12.0).color(muted));
-                        ui.label(egui::RichText::new(format!("Difficulty: {}", world.difficulty.name())).size(12.0).color(muted));
-                        ui.label(egui::RichText::new(format!("Killed: {}", fmt_num(world.total_dead))).size(12.0).color(muted));
+                        ui.label(egui::RichText::new(bio_text).size(28.0).color(accent));
+                        ui.label(egui::RichText::new(format!("{}/5 Biohazards", score.biohazards))
+                            .size(12.0).color(muted));
+                        ui.add_space(20.0);
+
+                        // Stats grid
+                        egui::Grid::new("endgame_stats")
+                            .num_columns(2)
+                            .spacing([20.0, 8.0])
+                            .show(ui, |ui| {
+                                ui.label(egui::RichText::new("Disease").size(12.0).color(muted));
+                                ui.label(egui::RichText::new(&world.disease_name).size(12.0).strong().color(text));
+                                ui.end_row();
+
+                                ui.label(egui::RichText::new("Pathogen").size(12.0).color(muted));
+                                ui.label(egui::RichText::new(world.disease.pathogen_type.name()).size(12.0).color(text));
+                                ui.end_row();
+
+                                ui.label(egui::RichText::new("Difficulty").size(12.0).color(muted));
+                                ui.label(egui::RichText::new(world.difficulty.name()).size(12.0).color(text));
+                                ui.end_row();
+
+                                ui.label(egui::RichText::new("Time").size(12.0).color(muted));
+                                let minutes = world.tick / 1000;
+                                let seconds = (world.tick % 1000) * 60 / 1000;
+                                ui.label(egui::RichText::new(format!("{}m {}s", minutes, seconds)).size(12.0).color(text));
+                                ui.end_row();
+
+                                ui.label(egui::RichText::new("Killed").size(12.0).color(muted));
+                                ui.label(egui::RichText::new(fmt_num(world.total_dead)).size(12.0).color(danger));
+                                ui.end_row();
+
+                                ui.label(egui::RichText::new("Cure %").size(12.0).color(muted));
+                                ui.label(egui::RichText::new(format!("{:.1}%", world.cure_overall)).size(12.0).color(info));
+                                ui.end_row();
+                            });
+
+                        ui.add_space(24.0);
+
+                        // Score breakdown
+                        ui.label(egui::RichText::new("SCORE BREAKDOWN").size(11.0).strong().color(muted));
+                        ui.add_space(4.0);
+                        egui::Grid::new("score_breakdown")
+                            .num_columns(2)
+                            .spacing([20.0, 4.0])
+                            .show(ui, |ui| {
+                                ui.label(egui::RichText::new("Time Bonus").size(11.0).color(muted));
+                                ui.label(egui::RichText::new(format!("+{}", score.time_bonus)).size(11.0).color(success));
+                                ui.end_row();
+
+                                ui.label(egui::RichText::new("Disease Score").size(11.0).color(muted));
+                                ui.label(egui::RichText::new(format!("+{}", score.disease_score)).size(11.0).color(success));
+                                ui.end_row();
+
+                                ui.label(egui::RichText::new("Cure Penalty").size(11.0).color(muted));
+                                ui.label(egui::RichText::new(format!("-{}", score.cure_penalty)).size(11.0).color(danger));
+                                ui.end_row();
+
+                                ui.label(egui::RichText::new("Difficulty Multiplier").size(11.0).color(muted));
+                                ui.label(egui::RichText::new(format!("x{:.1}", score.diff_mult)).size(11.0).color(accent));
+                                ui.end_row();
+                            });
+
+                        ui.add_space(24.0);
+
+                        // Play Again button
+                        let btn = egui::Button::new(
+                            egui::RichText::new("PLAY AGAIN").size(14.0).strong().color(heading)
+                        )
+                        .min_size(egui::vec2(200.0, 44.0))
+                        .fill(accent)
+                        .corner_radius(egui::CornerRadius::same(10));
+                        if ui.add(btn).clicked() {
+                            *world = World::new(&std::fs::read_to_string("../assets/world.svg")
+                                .or_else(|_| std::fs::read_to_string("assets/world.svg"))
+                                .unwrap_or_default());
+                            world.init_disease(&world.disease_name.clone(), world.disease.pathogen_type);
+                        }
                     });
                 });
         });
