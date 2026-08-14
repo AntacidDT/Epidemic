@@ -487,8 +487,11 @@ fn build_title_screen(ctx: &egui::Context, world: &mut World, logo: Option<&egui
     egui::CentralPanel::default()
         .frame(egui::Frame::new().fill(BLACK))
         .show(ctx, |ui| {
-            // Background gradient
             let full_rect = ui.max_rect();
+            let sw = full_rect.width();
+            let sh = full_rect.height();
+
+            // Background gradient
             gradient_rect_vertical(ui, full_rect, BG_DARK, BLACK);
 
             // Background image overlay
@@ -496,102 +499,120 @@ fn build_title_screen(ctx: &egui::Context, world: &mut World, logo: Option<&egui
                 ui.put(full_rect, egui::Image::new(tex).fit_to_exact_size(full_rect.size()));
             }
 
-            // Dark overlay for readability
-            ui.painter().rect_filled(full_rect, 0.0, egui::Color32::from_rgba_premultiplied(0, 0, 0, 120));
+            // Dark overlay
+            ui.painter().rect_filled(full_rect, 0.0, egui::Color32::from_rgba_premultiplied(0, 0, 0, 140));
 
-            // Content
-            ui.allocate_ui_at_rect(full_rect, |ui| {
-                ui.horizontal(|ui| {
-                    // Left: buttons
-                    ui.allocate_ui_at_rect(
-                        egui::Rect::from_min_size(
-                            egui::pos2(60.0, full_rect.height() * 0.3),
-                            egui::vec2(200.0, 400.0),
-                        ),
-                        |ui| {
-                            ui.vertical(|ui| {
-                                ui.spacing_mut().button_padding = egui::vec2(20.0, 14.0);
+            // ── 1. Top Header Block (Centered) ──
 
-                                // Play button with gradient
-                                let play_btn = egui::Button::new(
-                                    egui::RichText::new("PLAY").size(20.0).strong().color(WHITE),
-                                )
-                                .min_size(egui::vec2(180.0, 56.0))
-                                .fill(PRIMARY)
-                                .corner_radius(egui::CornerRadius::same(12));
-                                if ui.add(play_btn).clicked() {
-                                    world.phase = GamePhase::PathogenSelect;
-                                }
+            // Main Title: EPIDEMIC at (0.5, 0.12)
+            let title_x = sw * 0.5;
+            let title_y = sh * 0.12;
+            let title_text = "EPIDEMIC";
+            let title_galley = ui.painter().layout_no_wrap(
+                title_text.to_string(),
+                egui::FontId::proportional(72.0),
+                PRIMARY,
+            );
+            let title_pos = egui::pos2(title_x - title_galley.size().x * 0.5, title_y);
+            ui.painter().galley(title_pos, title_galley, WHITE);
 
-                                ui.add_space(20.0);
+            // Subtitle: NO SURVIVORS at (0.5, 0.18)
+            let sub_y = sh * 0.18;
+            let sub_text = "NO SURVIVORS";
+            let sub_galley = ui.painter().layout_no_wrap(
+                sub_text.to_string(),
+                egui::FontId::proportional(28.0),
+                EXTRA,
+            );
+            let sub_pos = egui::pos2(title_x - sub_galley.size().x * 0.5, sub_y);
+            ui.painter().galley(sub_pos, sub_galley, EXTRA);
 
-                                // Load Game
-                                let save_path = std::path::Path::new("epidemic_save.json");
-                                if save_path.exists() {
-                                    let btn = egui::Button::new(
-                                        egui::RichText::new("CONTINUE").size(14.0).color(TEXT),
-                                    )
-                                    .min_size(egui::vec2(180.0, 48.0))
-                                    .fill(BG_CARD)
-                                    .corner_radius(egui::CornerRadius::same(10))
-                                    .stroke(egui::Stroke::new(1.0, BORDER));
-                                    if ui.add(btn).clicked() {
-                                        if let Ok(data) = epidemic_core::load_game(save_path) {
-                                            data.apply_to_world(world);
-                                            world.phase = GamePhase::Playing;
-                                        }
-                                    }
-                                    ui.add_space(16.0);
-                                }
+            // ── 2. Central Navigation Menu (Vertical Button Stack) ──
 
-                                // Settings placeholder
-                                let btn = egui::Button::new(
-                                    egui::RichText::new("SETTINGS").size(13.0).color(TEXT_DIM),
-                                )
-                                .min_size(egui::vec2(180.0, 44.0))
-                                .fill(BG_CARD)
-                                .corner_radius(egui::CornerRadius::same(10))
-                                .stroke(egui::Stroke::new(1.0, BORDER));
-                                let _ = ui.add(btn);
-                            });
-                        },
-                    );
+            let btn_width = sw * 0.40;
+            let btn_height = 52.0;
+            let btn_spacing = sh * 0.08; // ~8% of screen height between buttons
+            let btn_x = sw * 0.5 - btn_width * 0.5;
+            let start_y = sh * 0.55;
 
-                    // Right: title
-                    ui.allocate_ui_at_rect(
-                        egui::Rect::from_min_size(
-                            egui::pos2(full_rect.width() * 0.42, full_rect.height() * 0.12),
-                            egui::vec2(600.0, 500.0),
-                        ),
-                        |ui| {
-                            ui.vertical(|ui| {
-                                // Gradient title
-                                ui.label(
-                                    egui::RichText::new("EPIDEMIC")
-                                        .size(72.0)
-                                        .strong()
-                                        .color(PRIMARY),
-                                );
-                                ui.label(
-                                    egui::RichText::new("Natural Strategies")
-                                        .size(22.0)
-                                        .color(EXTRA),
-                                );
-                                ui.add_space(32.0);
-                                ui.label(
-                                    egui::RichText::new(
-                                        "Engineer a pathogen to infect and eradicate humanity.\n\
-                                         Evolve transmission, symptoms, and abilities.\n\
-                                         Outsmart governments. Beat the cure."
-                                    )
-                                    .size(15.0)
-                                    .color(TEXT_DIM),
-                                );
-                            });
-                        },
-                    );
-                });
-            });
+            // Button definitions
+            let buttons = [
+                ("START GAME", true),
+                ("SETTINGS", true),
+                ("CREDITS", true),
+                ("QUIT", true),
+            ];
+
+            for (i, (label, _enabled)) in buttons.iter().enumerate() {
+                let btn_y = start_y + (i as f32 * btn_spacing);
+                let btn_rect = egui::Rect::from_min_size(
+                    egui::pos2(btn_x, btn_y),
+                    egui::vec2(btn_width, btn_height),
+                );
+
+                // Button background
+                let is_hovered = ui.rect_contains_pointer(btn_rect);
+                let btn_fill = if is_hovered { BG_HOVER } else { BG_CARD };
+                let btn_stroke = if is_hovered {
+                    egui::Stroke::new(1.5, PRIMARY)
+                } else {
+                    egui::Stroke::new(1.0, BORDER)
+                };
+
+                ui.painter().rect_filled(btn_rect, 10.0, btn_fill);
+                ui.painter().rect_stroke(btn_rect, 10.0, btn_stroke, egui::StrokeKind::Outside);
+
+                // Button text centered
+                let btn_galley = ui.painter().layout_no_wrap(
+                    label.to_string(),
+                    egui::FontId::proportional(18.0),
+                    TEXT,
+                );
+                let text_pos = egui::pos2(
+                    btn_rect.center().x - btn_galley.size().x * 0.5,
+                    btn_rect.center().y - btn_galley.size().y * 0.5,
+                );
+                ui.painter().galley(text_pos, btn_galley, WHITE);
+
+                // Click detection
+                let response = ui.allocate_rect(btn_rect, egui::Sense::click());
+                if response.clicked() {
+                    match *label {
+                        "START GAME" => { world.phase = GamePhase::PathogenSelect; }
+                        "QUIT" => { std::process::exit(0); }
+                        _ => {} // Settings, Credits — TODO
+                    }
+                }
+            }
+
+            // ── 3. Footer Bar ──
+
+            // Version label: bottom-left (0.03, 0.95)
+            let footer_y = sh * 0.95;
+            let version_text = "v0.2.0 Alpha";
+            let version_galley = ui.painter().layout_no_wrap(
+                version_text.to_string(),
+                egui::FontId::proportional(12.0),
+                TEXT_DIM,
+            );
+            ui.painter().galley(
+                egui::pos2(sw * 0.03, footer_y),
+                version_galley,
+                TEXT_DIM,
+            );
+
+            // GitHub link: bottom-right (0.97, 0.95)
+            let github_text = "GitHub: Epidemic NS";
+            let github_galley = ui.painter().layout_no_wrap(
+                github_text.to_string(),
+                egui::FontId::proportional(12.0),
+                TEXT_DIM,
+            );
+            ui.painter().galley(
+                egui::pos2(sw * 0.97 - github_galley.size().x, footer_y),
+                github_galley,
+                TEXT_DIM,
+            );
         });
 }
 
