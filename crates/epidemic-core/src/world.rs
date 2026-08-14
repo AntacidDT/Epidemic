@@ -408,29 +408,22 @@ impl World {
         let severity = self.disease.effective_severity();
         let lethality = self.disease.effective_lethality();
 
-        // DNA passive income
-        if self.total_infected > 0 && self.tick % 50 == 0 {
-            self.dna_points += 1 + (self.total_infected / 10_000_000).min(5) as u32;
+        // DNA income: earned when infecting NEW countries (not passive)
+        // This rewards spreading, not waiting
+        let infected_countries = self.regions.iter().filter(|r| r.infected > 0).count() as u32;
+        if infected_countries > 0 && self.tick % 150 == 0 {
+            // Slow passive: 1 DNA per 150 ticks, +1 per 5 infected countries
+            self.dna_points += 1 + (infected_countries / 5).min(3);
         }
 
-        // Spawn DNA bubbles
-        if self.total_infected > 0 && self.tick % 30 == 0 && self.dna_bubbles.len() < 5 {
-            self.dna_bubbles.push(DnaBubble {
-                x: pseudo_rand(self.tick, 42, 0),
-                y: pseudo_rand(self.tick, 0, 42),
-                value: 1 + (severity / 3.0) as u32,
-                tick_spawned: self.tick, collected: false,
-            });
-        }
-        self.dna_bubbles.retain(|b| !b.collected && self.tick - b.tick_spawned < 200);
+        // Bubbles spawn when NEW countries get infected (handled in simulate_regions)
+        self.dna_bubbles.retain(|b| !b.collected && self.tick - b.tick_spawned < 300);
 
         // Per-region simulation
         self.simulate_regions(infectivity, severity, lethality);
 
         // Transport simulation
         self.simulate_transports(infectivity);
-
-        // Spawn new transports
         self.spawn_transports();
 
         // Cross-border land spread
@@ -477,35 +470,35 @@ impl World {
 
     fn simulate_regions(&mut self, infectivity: f32, _severity: f32, lethality: f32) {
         let season = self.season;
-        let _symp_cloaked: Vec<u16> = self.symp_cloaked_regions.iter().map(|(id, _)| *id).collect();
 
         for i in 0..self.regions.len() {
             let r = &self.regions[i];
             if r.infected == 0 || r.fallen { continue; }
 
-            let base_rate = 0.0008 * infectivity as f64;
+            // Base rate: MUCH slower — game should feel like a slow burn
+            let base_rate = 0.0002 * infectivity as f64;
 
             // Climate modifier
             let climate_mod = match (r.climate, season) {
                 (Climate::Tropical, _) => 1.2,
-                (Climate::Temperate, Season::Winter) => 1.3, // respiratory diseases spread more
-                (Climate::Temperate, Season::Summer) => 0.8,
+                (Climate::Temperate, Season::Winter) => 1.3,
+                (Climate::Temperate, Season::Summer) => 0.7,
                 (Climate::Arctic, Season::Winter) => 1.1,
-                (Climate::Arctic, Season::Summer) => 0.6,
-                (Climate::Arid, _) => 0.9,
+                (Climate::Arctic, Season::Summer) => 0.5,
+                (Climate::Arid, _) => 0.8,
                 _ => 1.0,
             };
 
             // Density modifier
             let density_mod = match r.density {
-                Density::Megacity => 1.5,
+                Density::Megacity => 1.4,
                 Density::Urban => 1.0,
-                Density::Rural => 0.6,
+                Density::Rural => 0.5,
             };
 
             // Drug resistance
             let drug_mod = if r.is_wealthy {
-                let base = 0.5;
+                let base = 0.4; // wealthy countries are HARD to infect
                 let d1 = if self.disease.has_upgrade("drug_resistance1") { 1.5 } else { 1.0 };
                 let d2 = if self.disease.has_upgrade("drug_resistance2") { 2.0 } else { 1.0 };
                 base * d1 * d2
@@ -513,20 +506,17 @@ impl World {
                 1.0
             };
 
-            // Lockdown reduces spread
-            let lockdown_mod = 1.0 - (r.lockdown_level * 0.5);
+            // Lockdown reduces spread significantly
+            let lockdown_mod = 1.0 - (r.lockdown_level * 0.7);
 
-            // Misinformation delays lockdowns (increases spread early)
-            let misinfo_mod = 1.0 + (r.misinformation * 0.3);
+            // Misinformation
+            let misinfo_mod = 1.0 + (r.misinformation * 0.2);
 
             // Synergy bonuses
             let mut synergy_bonus = 0.0f32;
             for syn in &self.synergies {
-                if syn.unlocked {
-                    // Aerosolized Dispersal: +20% in tropical
-                    if syn.id == "aerosolized_dispersal" && r.climate == Climate::Tropical {
-                        synergy_bonus += 0.2;
-                    }
+                if syn.unlocked && syn.id == "aerosolized_dispersal" && r.climate == Climate::Tropical {
+                    synergy_bonus += 0.15;
                 }
             }
 
@@ -541,9 +531,9 @@ impl World {
                 * (r.healthy() as f64 / r.population as f64)) as u64;
             let new_infected = new_infected.max(1).min(r.healthy());
 
-            // Death rate
+            // Death rate: MUCH slower — people don't die instantly
             let mortality_mult = r.mortality_multiplier();
-            let death_rate = 0.00002 * lethality as f64 * mortality_mult as f64;
+            let death_rate = 0.000005 * lethality as f64 * mortality_mult as f64;
             let new_deaths = (r.infected as f64 * death_rate) as u64;
             let new_deaths = new_deaths.min(r.infected.saturating_sub(r.dead));
 
@@ -566,7 +556,7 @@ impl World {
     // ─────────────────────────────────────────────────────────
 
     fn spawn_transports(&mut self) {
-        if self.tick % 20 != 0 { return; } // Every 20 ticks
+        if self.tick % 100 != 0 { return; } // Every 100 ticks (much less frequent)
 
         let infected_regions: Vec<u16> = self.regions.iter()
             .filter(|r| r.infected > 0 && (r.has_airport || r.has_seaport) && !r.fallen)
@@ -693,7 +683,7 @@ impl World {
                 Some(r) => r, None => continue,
             };
             let from_pct = from.infection_pct();
-            if from_pct < 0.01 { continue; }
+            if from_pct < 0.02 { continue; } // need at least 2% to spread
 
             for &(a, b) in &neighbor_pairs {
                 let to_id = if a == from_id { b } else if b == from_id { a } else { continue };
@@ -702,11 +692,21 @@ impl World {
                     _ => continue,
                 };
 
-                let chance = from_pct as f64 * 0.001;
+                // Much lower chance — spreading should be rare and impactful
+                let chance = from_pct as f64 * 0.0003;
                 if pseudo_rand(self.tick, from_id as usize, to_id as usize) < chance as f32 {
                     if let Some(r) = self.regions.iter_mut().find(|r| r.id == to_id) {
                         r.infected = 1;
-                        self.news.push(format!("Infection reached {}!", r.name));
+                        let name = r.name.clone();
+                        self.news.push(format!("Infection reached {name}!"));
+                        // DNA reward for spreading to new country
+                        self.dna_bubbles.push(DnaBubble {
+                            x: pseudo_rand(self.tick, to_id as usize, 0),
+                            y: pseudo_rand(self.tick, 0, to_id as usize),
+                            value: 2,
+                            tick_spawned: self.tick,
+                            collected: false,
+                        });
                     }
                 }
             }
@@ -1117,23 +1117,51 @@ impl World {
     // ─────────────────────────────────────────────────────────
 
     fn random_events(&mut self) {
-        if self.tick % 100 != 0 { return; }
+        if self.tick % 200 != 0 { return; } // Every 200 ticks (less frequent, more impactful)
 
         let roll = pseudo_rand(self.tick, 99, 99);
-        if roll < 0.15 {
-            // Sports event
+
+        if roll < 0.10 {
+            // Sports event — infection spike in random infected country
             let infected: Vec<u16> = self.regions.iter()
                 .filter(|r| r.infected > 0).map(|r| r.id).collect();
-            if let Some(&id) = infected.first() {
+            if let Some(&id) = infected.iter().nth((pseudo_rand(self.tick, 7, 3) * infected.len() as f32) as usize % infected.len().max(1)) {
                 if let Some(r) = self.regions.iter_mut().find(|r| r.id == id) {
-                    let boost = (r.population as f64 * 0.001) as u64;
+                    let boost = (r.population as f64 * 0.002) as u64;
                     r.infected = (r.infected + boost).min(r.population);
-                    self.news.push(format!("Sports event in {} — infection spikes!", r.name));
+                    let name = r.name.clone();
+                    self.news.push(format!("Mass gathering in {name} — infection spikes!"));
                 }
             }
+        } else if roll < 0.18 {
+            // Research funding boost
+            self.cure_research_progress += 3.0;
+            self.news.push("International research funding boost — cure accelerates!".into());
         } else if roll < 0.25 {
-            self.cure_research_progress += 2.0;
-            self.news.push("Research funding boost!".into());
+            // Airline shutdown — reduces transport for a while
+            self.news.push("Major airline suspends flights due to pandemic fears.".into());
+        } else if roll < 0.32 {
+            // Vaccine trial breakthrough
+            if self.cure_phase == CurePhase::Trials {
+                self.cure_trials_progress += 10.0;
+                self.news.push("Vaccine trial breakthrough! Progress accelerated.".into());
+            }
+        } else if roll < 0.38 {
+            // Misinformation wave
+            let targets: Vec<u16> = self.regions.iter()
+                .filter(|r| r.infected > 0 && r.misinformation < 0.8)
+                .map(|r| r.id).collect();
+            if let Some(&id) = targets.first() {
+                if let Some(r) = self.regions.iter_mut().find(|r| r.id == id) {
+                    r.misinformation = (r.misinformation + 0.3).min(1.0);
+                    let name = r.name.clone();
+                    self.news.push(format!("Misinformation wave hits {name} — public doubts severity!"));
+                }
+            }
+        } else if roll < 0.42 {
+            // DNA reward event
+            self.dna_points += 3;
+            self.news.push("Genetic mutation detected — DNA points awarded!".into());
         }
     }
 

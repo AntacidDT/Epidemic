@@ -95,30 +95,30 @@ pub struct Upgrade {
 
 pub fn all_upgrades() -> Vec<Upgrade> {
     vec![
-        // === TRANSMISSION ===
+        // === TRANSMISSION === (costs increased ~3x — DNA must be precious)
         Upgrade {
             id: "air1", name: "Air 1", category: UpgradeCategory::Transmission,
-            cost: 9, infectivity: 3.0, severity: 0.0, lethality: 0.0,
+            cost: 18, infectivity: 3.0, severity: 0.0, lethality: 0.0,
             requires: vec![], description: "Infectious particles spread through the air.",
         },
         Upgrade {
             id: "air2", name: "Air 2", category: UpgradeCategory::Transmission,
-            cost: 13, infectivity: 7.0, severity: 0.0, lethality: 0.0,
+            cost: 28, infectivity: 7.0, severity: 0.0, lethality: 0.0,
             requires: vec!["air1"], description: "Enhanced airborne transmission.",
         },
         Upgrade {
             id: "water1", name: "Water 1", category: UpgradeCategory::Transmission,
-            cost: 9, infectivity: 3.0, severity: 0.0, lethality: 0.0,
+            cost: 18, infectivity: 3.0, severity: 0.0, lethality: 0.0,
             requires: vec![], description: "Pathogen survives in water. Ship transmission.",
         },
         Upgrade {
             id: "water2", name: "Water 2", category: UpgradeCategory::Transmission,
-            cost: 13, infectivity: 7.0, severity: 0.0, lethality: 0.0,
+            cost: 28, infectivity: 7.0, severity: 0.0, lethality: 0.0,
             requires: vec!["water1"], description: "Enhanced waterborne transmission.",
         },
         Upgrade {
             id: "insect1", name: "Insect 1", category: UpgradeCategory::Transmission,
-            cost: 9, infectivity: 5.0, severity: 1.0, lethality: 0.0,
+            cost: 20, infectivity: 5.0, severity: 1.0, lethality: 0.0,
             requires: vec![], description: "Insects carry the pathogen. Hot climate bonus.",
         },
         Upgrade {
