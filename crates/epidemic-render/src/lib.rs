@@ -254,8 +254,31 @@ impl Renderer {
             depth_stencil: None, multisample: wgpu::MultisampleState::default(), multiview: None, cache: None,
         });
 
-        // egui
+        // egui with custom fonts
         let egui_ctx = egui::Context::default();
+
+        // Load Geist font
+        let mut fonts = egui::FontDefinitions::default();
+        if let Ok(font_data) = std::fs::read("../Assets/fonts/Geist-Regular.ttf")
+            .or_else(|_| std::fs::read("Assets/fonts/Geist-Regular.ttf"))
+        {
+            fonts.font_data.insert("geist".to_owned(), std::sync::Arc::new(egui::FontData::from_owned(font_data)));
+            fonts.families
+                .entry(egui::FontFamily::Proportional)
+                .or_default()
+                .insert(0, "geist".to_owned());
+            fonts.families
+                .entry(egui::FontFamily::Monospace)
+                .or_default()
+                .push("geist".to_owned());
+        }
+        if let Ok(font_data) = std::fs::read("../Assets/fonts/Geist-Bold.ttf")
+            .or_else(|_| std::fs::read("Assets/fonts/Geist-Bold.ttf"))
+        {
+            fonts.font_data.insert("geist-bold".to_owned(), std::sync::Arc::new(egui::FontData::from_owned(font_data)));
+        }
+        egui_ctx.set_fonts(fonts);
+
         let egui_state = egui_winit::State::new(egui_ctx.clone(), egui::ViewportId::ROOT, &window, None, None, None);
         let egui_renderer = egui_wgpu::Renderer::new(&device, surface_format, None, 1, false);
 
@@ -648,61 +671,243 @@ fn muted_to_color32(brightness: f32) -> egui::Color32 {
 // ─── Game Type Select ───
 fn build_game_type_select(ctx: &egui::Context, world: &mut World,
     bg_image: Option<&egui::TextureHandle>) {
-    egui::CentralPanel::default().frame(egui::Frame::new().fill(BG_DARK).inner_margin(egui::Margin::same(60))).show(ctx, |ui| {
-        // Background image - scaled to fit
-        if let Some(tex) = bg_image {
-            let avail = ui.available_size();
-            let img = egui::Image::new(tex).fit_to_exact_size(avail);
-            ui.add(img);
-        }
 
-        ui.vertical_centered(|ui| {
-            ui.label(egui::RichText::new("GAME TYPE").size(28.0).strong().color(PRIMARY));
-            ui.add_space(8.0);
-            ui.label(egui::RichText::new("Choose how you want to play").size(13.0).color(TEXT_DIM));
-            ui.add_space(40.0);
+    // Color palette
+    let header_text = egui::Color32::from_rgb(128, 24, 24);      // #801818
+    let coral_red = egui::Color32::from_rgb(255, 102, 102);      // #FF6666
+    let coral_outline = egui::Color32::from_rgb(185, 41, 38);    // #b92926
+    let sky_blue = egui::Color32::from_rgb(51, 153, 255);        // #3399FF
+    let blue_outline = egui::Color32::from_rgb(86, 137, 231);    // #5689e7
+    let lavender = egui::Color32::from_rgb(153, 170, 204);       // #99AACC
+    let dark_maroon = egui::Color32::from_rgb(58, 11, 14);       // #3A0B0E
+    let footer_fill = egui::Color32::from_rgb(80, 15, 15);       // dark red
+    let btn_text_dark = egui::Color32::from_rgb(0, 0, 0);        // black
 
-            let types = [
-                (epidemic_core::GameType::Campaign, "Infect the world before the cure completes.", PRIMARY, "Standard"),
-                (epidemic_core::GameType::FreePlay, "No pressure. Experiment freely.", SUCCESS, "Relaxed"),
-                (epidemic_core::GameType::SpeedRun, "Race the clock. Fastest win = best score.", EXTRA, "Competitive"),
-            ];
+    egui::CentralPanel::default()
+        .frame(egui::Frame::new().fill(BLACK))
+        .show(ctx, |ui| {
+            let full_rect = ui.max_rect();
+            let sw = full_rect.width();
+            let sh = full_rect.height();
 
-            for (gtype, desc, color, tag) in types {
-                let selected = world.game_type == gtype;
-                let card_fill = if selected { BG_HOVER } else { BG_CARD };
-                let card_stroke = if selected { egui::Stroke::new(2.0, color) } else { egui::Stroke::new(1.0, BORDER) };
-
-                egui::Frame::new().fill(card_fill).corner_radius(egui::CornerRadius::same(12))
-                    .stroke(card_stroke).inner_margin(egui::Margin::same(20))
-                    .show(ui, |ui| {
-                        ui.set_min_width(500.0);
-                        ui.horizontal(|ui| {
-                            ui.label(egui::RichText::new(gtype.name()).size(18.0).strong().color(if selected { color } else { WHITE }));
-                            ui.add_space(8.0);
-                            egui::Frame::new().fill(color).corner_radius(egui::CornerRadius::same(4))
-                                .inner_margin(egui::Margin::symmetric(6, 2))
-                                .show(ui, |ui| {
-                                    ui.label(egui::RichText::new(tag).size(10.0).strong().color(WHITE));
-                                });
-                            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                                let btn = egui::Button::new(egui::RichText::new(if selected { "SELECTED" } else { "SELECT" }).size(12.0).strong().color(WHITE))
-                                    .fill(if selected { color } else { BG_HOVER }).corner_radius(egui::CornerRadius::same(8));
-                                if ui.add(btn).clicked() { world.game_type = gtype; }
-                            });
-                        });
-                        ui.add_space(4.0);
-                        ui.label(egui::RichText::new(desc).size(12.0).color(TEXT_DIM));
-                    });
-                ui.add_space(12.0);
+            // Background image
+            if let Some(tex) = bg_image {
+                ui.put(full_rect, egui::Image::new(tex).fit_to_exact_size(full_rect.size()));
             }
 
-            ui.add_space(32.0);
-            let btn = egui::Button::new(egui::RichText::new("CONTINUE").size(14.0).strong().color(WHITE))
-                .min_size(egui::vec2(180.0, 44.0)).fill(PRIMARY).corner_radius(egui::CornerRadius::same(10));
-            if ui.add(btn).clicked() { world.phase = GamePhase::DifficultySelect; }
+            // ── A. Header Banner (Y: 0.12–0.23) ──
+            let header_rect = egui::Rect::from_min_size(
+                egui::pos2(0.0, sh * 0.12),
+                egui::vec2(sw, sh * 0.11),
+            );
+            ui.painter().rect_filled(header_rect, 0.0, egui::Color32::from_rgba_premultiplied(20, 20, 30, 180));
+
+            // "CHOOSE WISELY" with outline
+            let header_y = sh * 0.175;
+            let header_x = sw * 0.5;
+            draw_outlined_text(
+                ui,
+                "CHOOSE WISELY",
+                egui::pos2(header_x, header_y),
+                egui::FontId::proportional(36.0),
+                header_text,
+                dark_maroon,
+                true, // centered
+            );
+
+            // ── B. Mode Card 1: Outbreak (Left) ──
+            let card_w = sw * 0.20;
+            let card_h = sh * 0.33;
+            let card1_x = sw * 0.08;
+            let card1_y = sh * 0.25;
+            let card1_rect = egui::Rect::from_min_size(
+                egui::pos2(card1_x, card1_y),
+                egui::vec2(card_w, card_h),
+            );
+
+            // Drop shadow
+            ui.painter().rect_filled(
+                egui::Rect::from_min_size(
+                    egui::pos2(card1_x + 4.0, card1_y + 4.0),
+                    egui::vec2(card_w, card_h),
+                ),
+                6.0,
+                dark_maroon,
+            );
+            // Card fill
+            ui.painter().rect_filled(card1_rect, 6.0, coral_red);
+            // Card border
+            ui.painter().rect_stroke(card1_rect, 6.0, egui::Stroke::new(3.0, dark_maroon), egui::StrokeKind::Outside);
+
+            // Title "Outbreak" centered at (0.18, 0.35)
+            draw_outlined_text(
+                ui,
+                "Outbreak",
+                egui::pos2(sw * 0.18, sh * 0.35),
+                egui::FontId::proportional(28.0),
+                coral_red,
+                dark_maroon,
+                true,
+            );
+
+            // Description at (0.18, 0.47)
+            draw_outlined_text(
+                ui,
+                "cause a outbreak and wipe out humanity",
+                egui::pos2(sw * 0.18, sh * 0.47),
+                egui::FontId::proportional(12.0),
+                coral_red,
+                dark_maroon,
+                true,
+            );
+
+            // Click detection for Outbreak card
+            let response = ui.allocate_rect(card1_rect, egui::Sense::click());
+            if response.clicked() {
+                world.game_type = epidemic_core::GameType::Campaign;
+                world.phase = GamePhase::DifficultySelect;
+            }
+
+            // ── C. Mode Card 2: Cure (Right) ──
+            let card2_x = sw * 0.63;
+            let card2_y = sh * 0.25;
+            let card2_rect = egui::Rect::from_min_size(
+                egui::pos2(card2_x, card2_y),
+                egui::vec2(card_w, card_h),
+            );
+
+            // Drop shadow
+            ui.painter().rect_filled(
+                egui::Rect::from_min_size(
+                    egui::pos2(card2_x + 4.0, card2_y + 4.0),
+                    egui::vec2(card_w, card_h),
+                ),
+                6.0,
+                dark_maroon,
+            );
+            // Card fill
+            ui.painter().rect_filled(card2_rect, 6.0, lavender);
+            // Card border
+            ui.painter().rect_stroke(card2_rect, 6.0, egui::Stroke::new(3.0, dark_maroon), egui::StrokeKind::Outside);
+
+            // Title "Cure" centered at (0.73, 0.35)
+            draw_outlined_text(
+                ui,
+                "Cure",
+                egui::pos2(sw * 0.73, sh * 0.35),
+                egui::FontId::proportional(28.0),
+                sky_blue,
+                blue_outline,
+                true,
+            );
+
+            // Description at (0.73, 0.47)
+            draw_outlined_text(
+                ui,
+                "cure the world from a virus and save humanity",
+                egui::pos2(sw * 0.73, sh * 0.47),
+                egui::FontId::proportional(12.0),
+                sky_blue,
+                blue_outline,
+                true,
+            );
+
+            // Click detection for Cure card
+            let response = ui.allocate_rect(card2_rect, egui::Sense::click());
+            if response.clicked() {
+                // TODO: Cure mode
+                world.game_type = epidemic_core::GameType::FreePlay;
+                world.phase = GamePhase::DifficultySelect;
+            }
+
+            // ── D. Central Subtitle (Between Cards) ──
+            let sub_y = sh * 0.42;
+            let sub_x = sw * 0.50;
+
+            // "will you be the one to attack" in coral red
+            let attack_text = "will you be the one to attack";
+            let attack_galley = ui.painter().layout_no_wrap(
+                attack_text.to_string(),
+                egui::FontId::proportional(16.0),
+                coral_red,
+            );
+            let save_text = "or the one to save?";
+            let save_galley = ui.painter().layout_no_wrap(
+                save_text.to_string(),
+                egui::FontId::proportional(16.0),
+                sky_blue,
+            );
+
+            let total_w = attack_galley.size().x + 8.0 + save_galley.size().x;
+            let start_x = sub_x - total_w * 0.5;
+
+            // Draw attack text with outline
+            draw_outlined_text(
+                ui,
+                attack_text,
+                egui::pos2(start_x + attack_galley.size().x * 0.5, sub_y),
+                egui::FontId::proportional(16.0),
+                coral_red,
+                dark_maroon,
+                true,
+            );
+
+            // Draw save text with outline
+            draw_outlined_text(
+                ui,
+                save_text,
+                egui::pos2(start_x + attack_galley.size().x + 8.0 + save_galley.size().x * 0.5, sub_y),
+                egui::FontId::proportional(16.0),
+                sky_blue,
+                blue_outline,
+                true,
+            );
+
+            // ── E. Footer Banner (Y: 0.78–1.0) ──
+            let footer_rect = egui::Rect::from_min_size(
+                egui::pos2(0.0, sh * 0.78),
+                egui::vec2(sw, sh * 0.22),
+            );
+            ui.painter().rect_filled(footer_rect, 0.0, footer_fill);
         });
-    });
+}
+
+/// Draw text with outline/shadow effect
+fn draw_outlined_text(
+    ui: &mut egui::Ui,
+    text: &str,
+    center_pos: egui::Pos2,
+    font_id: egui::FontId,
+    fill_color: egui::Color32,
+    outline_color: egui::Color32,
+    centered: bool,
+) {
+    // Draw outline (4 directions)
+    let offsets = [(-1.0, 0.0), (1.0, 0.0), (0.0, -1.0), (0.0, 1.0)];
+    for (ox, oy) in offsets {
+        let galley = ui.painter().layout_no_wrap(text.to_string(), font_id.clone(), outline_color);
+        let pos = if centered {
+            egui::pos2(
+                center_pos.x - galley.size().x * 0.5 + ox,
+                center_pos.y - galley.size().y * 0.5 + oy,
+            )
+        } else {
+            egui::pos2(center_pos.x + ox, center_pos.y + oy)
+        };
+        ui.painter().galley(pos, galley, outline_color);
+    }
+
+    // Draw fill
+    let galley = ui.painter().layout_no_wrap(text.to_string(), font_id, fill_color);
+    let pos = if centered {
+        egui::pos2(
+            center_pos.x - galley.size().x * 0.5,
+            center_pos.y - galley.size().y * 0.5,
+        )
+    } else {
+        center_pos
+    };
+    ui.painter().galley(pos, galley, fill_color);
 }
 
 // ─── Pathogen Select ───
