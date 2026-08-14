@@ -754,8 +754,8 @@ fn build_gameplay_hud(
             egui::Frame::new().fill(surface).corner_radius(egui::CornerRadius::same(8)).inner_margin(egui::Margin::same(12)).show(ui, |ui| {
                 ui.label(egui::RichText::new("Cure Progress").size(11.0).color(muted).strong());
                 ui.add_space(4.0);
-                ui.add(egui::ProgressBar::new(world.cure_progress / 100.0).fill(info).corner_radius(egui::CornerRadius::same(4)));
-                ui.label(egui::RichText::new(format!("{:.1}%", world.cure_progress)).size(12.0).color(info));
+                ui.add(egui::ProgressBar::new(world.cure_overall / 100.0).fill(info).corner_radius(egui::CornerRadius::same(4)));
+                ui.label(egui::RichText::new(format!("{:.1}% — {}", world.cure_overall, world.cure_phase.name())).size(12.0).color(info));
             });
 
             ui.add_space(8.0);

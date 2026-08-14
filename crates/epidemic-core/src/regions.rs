@@ -1,30 +1,82 @@
-/// A game region — groups of countries or standalone large countries.
+use std::collections::HashMap;
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Climate { Arid, Tropical, Temperate, Arctic }
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Density { Megacity, Urban, Rural }
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum GovernmentType { Authoritarian, Democratic, Failed }
+
+/// A game region — the core simulation unit.
 #[derive(Debug, Clone)]
 pub struct Region {
-    pub id: u16,           // matches SVG lookup table
-    pub code: String,      // primary ISO code (for display)
-    pub name: String,      // display name
-    pub population: u64,   // 2026 estimate
+    // Identity
+    pub id: u16,
+    pub code: String,
+    pub name: String,
+    pub svg_codes: Vec<String>,
+
+    // Population
+    pub population: u64,
     pub infected: u64,
     pub dead: u64,
+
+    // Geography
+    pub climate: Climate,
+    pub density: Density,
+    pub is_island: bool,
+    pub is_wealthy: bool,
+
+    // Infrastructure
+    pub hospital_capacity: f32,
+    pub healthcare_collapse: bool,
+    pub has_airport: bool,
+    pub has_seaport: bool,
     pub borders_open: bool,
-    pub cure_progress: f32, // 0.0 to 100.0
-    pub fallen: bool,       // true when everyone is dead
-    pub svg_codes: Vec<String>, // all SVG country codes in this region
+    pub air_borders_open: bool,
+    pub sea_borders_open: bool,
+
+    // Society
+    pub panic: f32,
+    pub government_type: GovernmentType,
+    pub misinformation: f32,
+    pub lockdown_level: f32,
+
+    // Cure
+    pub cure_progress: f32,
+    pub vaccine_doses: u64,
+    pub vaccinated: u64,
+
+    // State
+    pub fallen: bool,
+
+    // Supply chain
+    pub manufacturing_capacity: f32,
+    pub agricultural_capacity: f32,
+
+    // History
+    pub infection_history: Vec<(u64, u64)>,
+    pub death_history: Vec<(u64, u64)>,
 }
 
 impl Region {
     pub fn new(id: u16, code: &str, name: &str, population: u64, svg_codes: &[&str]) -> Self {
         Self {
-            id,
-            code: code.to_string(),
-            name: name.to_string(),
-            population,
-            infected: 0,
-            dead: 0,
-            borders_open: true,
-            cure_progress: 0.0,
+            id, code: code.to_string(), name: name.to_string(), population,
+            infected: 0, dead: 0,
+            climate: Climate::Temperate, density: Density::Urban,
+            is_island: false, is_wealthy: false,
+            hospital_capacity: 3.0, healthcare_collapse: false,
+            has_airport: false, has_seaport: false,
+            borders_open: true, air_borders_open: true, sea_borders_open: true,
+            panic: 0.0, government_type: GovernmentType::Democratic,
+            misinformation: 0.0, lockdown_level: 0.0,
+            cure_progress: 0.0, vaccine_doses: 0, vaccinated: 0,
             fallen: false,
+            manufacturing_capacity: 0.3, agricultural_capacity: 0.3,
+            infection_history: Vec::new(), death_history: Vec::new(),
             svg_codes: svg_codes.iter().map(|s| s.to_string()).collect(),
         }
     }
@@ -34,150 +86,130 @@ impl Region {
     }
 
     pub fn infection_pct(&self) -> f32 {
-        if self.population == 0 {
-            return 0.0;
-        }
+        if self.population == 0 { return 0.0; }
         self.infected as f32 / self.population as f32
     }
 
     pub fn death_pct(&self) -> f32 {
-        if self.population == 0 {
-            return 0.0;
-        }
+        if self.population == 0 { return 0.0; }
         self.dead as f32 / self.population as f32
+    }
+
+    pub fn is_overwhelmed(&self) -> bool {
+        let beds = self.population as f32 * self.hospital_capacity / 1000.0;
+        self.infected as f32 > beds
+    }
+
+    pub fn mortality_multiplier(&self) -> f32 {
+        if self.healthcare_collapse { 3.0 }
+        else if self.is_overwhelmed() { 1.5 }
+        else { 1.0 }
+    }
+
+    pub fn record_history(&mut self, tick: u64) {
+        if self.infection_history.len() >= 200 { self.infection_history.remove(0); }
+        if self.death_history.len() >= 200 { self.death_history.remove(0); }
+        self.infection_history.push((tick, self.infected));
+        self.death_history.push((tick, self.dead));
     }
 }
 
-/// Build the default region definitions.
-/// ~60-80 regions: large countries standalone, medium/small grouped.
+// Builder
+struct B(Region);
+fn r(id: u16, code: &str, name: &str, pop: u64, codes: &[&str]) -> B {
+    B(Region::new(id, code, name, pop, codes))
+}
+impl B {
+    fn w(mut self) -> Self { self.0.is_wealthy = true; self }
+    fn i(mut self) -> Self { self.0.is_island = true; self }
+    fn ar(mut self) -> Self { self.0.climate = Climate::Arid; self }
+    fn tr(mut self) -> Self { self.0.climate = Climate::Tropical; self }
+    fn te(mut self) -> Self { self.0.climate = Climate::Temperate; self }
+    fn ac(mut self) -> Self { self.0.climate = Climate::Arctic; self }
+    fn mc(mut self) -> Self { self.0.density = Density::Megacity; self }
+    fn ur(mut self) -> Self { self.0.density = Density::Urban; self }
+    fn ru(mut self) -> Self { self.0.density = Density::Rural; self }
+    fn ap(mut self) -> Self { self.0.has_airport = true; self }
+    fn sp(mut self) -> Self { self.0.has_seaport = true; self }
+    fn au(mut self) -> Self { self.0.government_type = GovernmentType::Authoritarian; self }
+    fn fs(mut self) -> Self { self.0.government_type = GovernmentType::Failed; self }
+    fn h(mut self, c: f32) -> Self { self.0.hospital_capacity = c; self }
+    fn m(mut self, c: f32) -> Self { self.0.manufacturing_capacity = c; self }
+    fn ag(mut self, c: f32) -> Self { self.0.agricultural_capacity = c; self }
+}
+impl From<B> for Region { fn from(b: B) -> Self { b.0 } }
+
 pub fn build_regions() -> Vec<Region> {
     vec![
-        // North America
-        Region::new(1, "US", "United States", 341_800_000, &["US"]),
-        Region::new(2, "CA", "Canada", 41_000_000, &["CA"]),
-        Region::new(3, "MX", "Mexico", 130_000_000, &["MX"]),
-        // Central America + Caribbean
-        Region::new(4, "CAM", "Central America", 55_000_000, &[
-            "GT", "BZ", "HN", "SV", "NI", "CR", "PA",
-            "CU", "JM", "HT", "DO", "TT", "BB", "GD",
-            "LC", "VC", "AG", "KN", "DM", "BS",
-            "PR", "VI", "AI", "AW", "CW", "SX", "MF", "BL", "PM",
-        ]),
-        // South America
-        Region::new(5, "BR", "Brazil", 216_000_000, &["BR"]),
-        Region::new(6, "AR", "Argentina", 47_000_000, &["AR"]),
-        Region::new(7, "CO", "Colombia", 52_000_000, &["CO"]),
-        Region::new(8, "PE", "Peru", 34_000_000, &["PE"]),
-        Region::new(9, "VE", "Venezuela", 28_000_000, &["VE"]),
-        Region::new(10, "SA", "South America Rest", 45_000_000, &[
-            "CL", "EC", "BO", "PY", "UY", "GY", "SR", "GF",
-        ]),
-        // Western Europe
-        Region::new(11, "GB", "United Kingdom", 69_000_000, &["GB"]),
-        Region::new(12, "FR", "France", 68_000_000, &["FR"]),
-        Region::new(13, "DE", "Germany", 84_000_000, &["DE"]),
-        Region::new(14, "ES", "Spain", 48_000_000, &["ES"]),
-        Region::new(15, "PT", "Portugal", 10_400_000, &["PT"]),
-        Region::new(16, "IT", "Italy", 59_000_000, &["IT"]),
-        Region::new(17, "WE", "Western Europe", 75_000_000, &[
-            "NL", "BE", "LU", "CH", "AT", "IE",
-        ]),
-        // Northern Europe
-        Region::new(18, "NE", "Northern Europe", 28_000_000, &[
-            "SE", "NO", "DK", "FI", "IS",
-        ]),
-        // Eastern Europe
-        Region::new(19, "PL", "Poland", 38_000_000, &["PL"]),
-        Region::new(20, "UA", "Ukraine", 37_000_000, &["UA"]),
-        Region::new(21, "EE", "Eastern Europe", 85_000_000, &[
-            "CZ", "SK", "HU", "RO", "BG", "HR", "RS", "BA",
-            "ME", "MK", "AL", "XK", "SI", "EE", "LV", "LT", "MD", "BY", "GE", "AM", "AZ",
-        ]),
-        // Russia
-        Region::new(22, "RU", "Russia", 144_000_000, &["RU"]),
-        // Middle East
-        Region::new(23, "TR", "Turkey", 86_000_000, &["TR"]),
-        Region::new(24, "SA2", "Saudi Arabia", 37_000_000, &["SA"]),
-        Region::new(25, "IR", "Iran", 88_000_000, &["IR"]),
-        Region::new(26, "IQ", "Iraq", 43_000_000, &["IQ"]),
-        Region::new(27, "ME", "Middle East Rest", 65_000_000, &[
-            "AE", "IL", "JO", "LB", "SY", "YE", "OM", "QA", "BH", "KW", "PS",
-        ]),
-        // North Africa
-        Region::new(28, "EG", "Egypt", 106_000_000, &["EG"]),
-        Region::new(29, "DZ", "Algeria", 46_000_000, &["DZ"]),
-        Region::new(30, "MA", "Morocco", 37_500_000, &["MA"]),
-        Region::new(31, "NA", "North Africa Rest", 45_000_000, &[
-            "TN", "LY", "SD", "SS", "EH",
-        ]),
-        // West Africa
-        Region::new(32, "NG", "Nigeria", 224_000_000, &["NG"]),
-        Region::new(33, "GH", "Ghana", 34_000_000, &["GH"]),
-        Region::new(34, "WA", "West Africa Rest", 180_000_000, &[
-            "SN", "ML", "BF", "NE", "CI", "GN", "SL", "LR", "BJ", "TG",
-            "MR", "GM", "GW", "GN", "CV",
-        ]),
-        // East Africa
-        Region::new(35, "ET", "Ethiopia", 126_000_000, &["ET"]),
-        Region::new(36, "KE", "Kenya", 56_000_000, &["KE"]),
-        Region::new(37, "TZ", "Tanzania", 65_000_000, &["TZ"]),
-        Region::new(38, "EA", "East Africa Rest", 140_000_000, &[
-            "UG", "RW", "BI", "DJ", "ER", "SO", "MG", "MZ", "MW", "ZM", "ZW",
-        ]),
-        // Central Africa
-        Region::new(39, "CD", "DR Congo", 102_000_000, &["CD"]),
-        Region::new(40, "CF", "Central Africa Rest", 70_000_000, &[
-            "CM", "CG", "GA", "GQ", "TD", "CF", "AO", "ST",
-        ]),
-        // Southern Africa
-        Region::new(41, "ZA", "South Africa", 62_000_000, &["ZA"]),
-        Region::new(42, "SA3", "Southern Africa Rest", 30_000_000, &[
-            "NA", "BW", "SZ", "LS",
-        ]),
-        // Central Asia
-        Region::new(43, "KZ", "Kazakhstan", 20_000_000, &["KZ"]),
-        Region::new(44, "CA2", "Central Asia Rest", 60_000_000, &[
-            "UZ", "TM", "KG", "TJ", "AF", "MN",
-        ]),
-        // South Asia
-        Region::new(45, "IN", "India", 1_450_000_000, &["IN"]),
-        Region::new(46, "PK", "Pakistan", 240_000_000, &["PK"]),
-        Region::new(47, "BD", "Bangladesh", 175_000_000, &["BD"]),
-        Region::new(48, "SA4", "South Asia Rest", 55_000_000, &[
-            "NP", "LK", "BT", "MV", "AF",
-        ]),
-        // Southeast Asia
-        Region::new(49, "ID", "Indonesia", 280_000_000, &["ID"]),
-        Region::new(50, "TH", "Thailand", 72_000_000, &["TH"]),
-        Region::new(51, "VN", "Vietnam", 100_000_000, &["VN"]),
-        Region::new(52, "PH", "Philippines", 117_000_000, &["PH"]),
-        Region::new(53, "MM", "Myanmar", 55_000_000, &["MM"]),
-        Region::new(54, "MY", "Malaysia", 34_000_000, &["MY"]),
-        Region::new(55, "SEA", "Southeast Asia Rest", 60_000_000, &[
-            "KH", "LA", "BN", "TL", "SG", "BN",
-        ]),
-        // East Asia
-        Region::new(56, "CN", "China", 1_425_000_000, &["CN"]),
-        Region::new(57, "JP", "Japan", 124_000_000, &["JP"]),
-        Region::new(58, "KR", "South Korea", 52_000_000, &["KR"]),
-        Region::new(59, "KP", "North Korea", 26_000_000, &["KP"]),
-        Region::new(60, "TW", "Taiwan", 24_000_000, &["TW"]),
-        // Oceania
-        Region::new(61, "AU", "Australia", 27_000_000, &["AU"]),
-        Region::new(62, "NZ", "New Zealand", 5_200_000, &["NZ"]),
-        Region::new(63, "OC", "Oceania Rest", 15_000_000, &[
-            "PG", "FJ", "SB", "VU", "WS", "TO", "KI", "MH",
-            "FM", "PW", "TV", "NR", "NC", "PF", "GU",
-        ]),
-        // Greenland
-        Region::new(64, "GL", "Greenland", 57_000, &["GL"]),
+        r(1,"US","United States",341_800_000,&["US"]).w().te().mc().ap().sp().h(5.8).into(),
+        r(2,"CA","Canada",41_000_000,&["CA"]).w().ac().ur().ap().sp().h(4.2).into(),
+        r(3,"MX","Mexico",130_000_000,&["MX"]).tr().mc().ap().sp().h(2.1).into(),
+        r(4,"CAM","Central America",55_000_000,&["GT","BZ","HN","SV","NI","CR","PA","CU","JM","HT","DO","TT","BB","GD","LC","VC","AG","KN","DM","BS","PR","VI","AI","AW","CW","SX","MF","BL","PM"]).tr().ur().ap().sp().h(1.5).into(),
+        r(5,"BR","Brazil",216_000_000,&["BR"]).tr().mc().ap().sp().h(2.3).m(0.7).ag(0.8).into(),
+        r(6,"AR","Argentina",47_000_000,&["AR"]).te().ur().ap().sp().h(3.0).into(),
+        r(7,"CO","Colombia",52_000_000,&["CO"]).tr().ur().ap().sp().h(1.8).into(),
+        r(8,"PE","Peru",34_000_000,&["PE"]).tr().ur().ap().sp().h(1.6).into(),
+        r(9,"VE","Venezuela",28_000_000,&["VE"]).tr().ur().ap().sp().h(1.0).fs().into(),
+        r(10,"SA","South America Rest",45_000_000,&["CL","EC","BO","PY","UY","GY","SR","GF"]).te().ur().ap().sp().h(2.0).into(),
+        r(11,"GB","United Kingdom",69_000_000,&["GB"]).w().te().mc().ap().sp().i().h(5.5).m(0.6).into(),
+        r(12,"FR","France",68_000_000,&["FR"]).w().te().mc().ap().sp().h(6.0).m(0.6).into(),
+        r(13,"DE","Germany",84_000_000,&["DE"]).w().te().mc().ap().sp().h(8.0).m(0.8).into(),
+        r(14,"ES","Spain",48_000_000,&["ES"]).w().te().ur().ap().sp().h(4.5).into(),
+        r(15,"PT","Portugal",10_400_000,&["PT"]).te().ur().ap().sp().h(3.5).into(),
+        r(16,"IT","Italy",59_000_000,&["IT"]).w().te().mc().ap().sp().h(5.0).into(),
+        r(17,"WE","Western Europe",75_000_000,&["NL","BE","LU","CH","AT","IE"]).w().te().ur().ap().sp().h(6.0).into(),
+        r(18,"NE","Northern Europe",28_000_000,&["SE","NO","DK","FI","IS"]).w().ac().ur().ap().sp().i().h(5.0).into(),
+        r(19,"PL","Poland",38_000_000,&["PL"]).te().ur().ap().h(3.5).into(),
+        r(20,"UA","Ukraine",37_000_000,&["UA"]).te().ur().ap().h(2.5).au().into(),
+        r(21,"EE","Eastern Europe",85_000_000,&["CZ","SK","HU","RO","BG","HR","RS","BA","ME","MK","AL","XK","SI","EE","LV","LT","MD","BY","GE","AM","AZ"]).te().ur().ap().h(3.0).into(),
+        r(22,"RU","Russia",144_000_000,&["RU"]).ac().mc().ap().sp().h(4.0).au().m(0.5).into(),
+        r(23,"TR","Turkey",86_000_000,&["TR"]).ar().mc().ap().sp().h(2.8).into(),
+        r(24,"SA2","Saudi Arabia",37_000_000,&["SA"]).ar().ur().ap().sp().w().h(2.5).into(),
+        r(25,"IR","Iran",88_000_000,&["IR"]).ar().mc().ap().sp().h(1.6).au().into(),
+        r(26,"IQ","Iraq",43_000_000,&["IQ"]).ar().ur().ap().h(1.0).fs().into(),
+        r(27,"ME","Middle East Rest",65_000_000,&["AE","IL","JO","LB","SY","YE","OM","QA","BH","KW","PS"]).ar().ur().ap().sp().h(2.0).into(),
+        r(28,"EG","Egypt",106_000_000,&["EG"]).ar().mc().ap().sp().h(1.6).au().into(),
+        r(29,"DZ","Algeria",46_000_000,&["DZ"]).ar().ur().ap().sp().h(1.5).au().into(),
+        r(30,"MA","Morocco",37_500_000,&["MA"]).ar().ur().ap().sp().h(1.2).into(),
+        r(31,"NA","North Africa Rest",45_000_000,&["TN","LY","SD","SS","EH"]).ar().ru().ap().h(0.8).fs().into(),
+        r(32,"NG","Nigeria",224_000_000,&["NG"]).tr().mc().ap().sp().h(0.5).into(),
+        r(33,"GH","Ghana",34_000_000,&["GH"]).tr().ur().ap().h(0.8).into(),
+        r(34,"WA","West Africa Rest",180_000_000,&["SN","ML","BF","NE","CI","GN","SL","LR","BJ","TG","MR","GM","GW","GN","CV"]).tr().ru().ap().h(0.3).into(),
+        r(35,"ET","Ethiopia",126_000_000,&["ET"]).tr().ru().ap().h(0.3).into(),
+        r(36,"KE","Kenya",56_000_000,&["KE"]).tr().ur().ap().h(0.5).into(),
+        r(37,"TZ","Tanzania",65_000_000,&["TZ"]).tr().ru().ap().h(0.3).into(),
+        r(38,"EA","East Africa Rest",140_000_000,&["UG","RW","BI","DJ","ER","SO","MG","MZ","MW","ZM","ZW"]).tr().ru().ap().h(0.2).into(),
+        r(39,"CD","DR Congo",102_000_000,&["CD"]).tr().ru().ap().h(0.1).fs().into(),
+        r(40,"CF","Central Africa Rest",70_000_000,&["CM","CG","GA","GQ","TD","CF","AO","ST"]).tr().ru().ap().h(0.2).into(),
+        r(41,"ZA","South Africa",62_000_000,&["ZA"]).tr().ur().ap().sp().h(2.0).into(),
+        r(42,"SA3","Southern Africa Rest",30_000_000,&["NA","BW","SZ","LS"]).tr().ru().ap().h(0.5).into(),
+        r(43,"KZ","Kazakhstan",20_000_000,&["KZ"]).ar().ur().ap().h(2.5).au().into(),
+        r(44,"CA2","Central Asia Rest",60_000_000,&["UZ","TM","KG","TJ","AF","MN"]).ar().ru().ap().h(0.8).au().into(),
+        r(45,"IN","India",1_450_000_000,&["IN"]).tr().mc().ap().sp().h(0.5).m(0.6).ag(0.7).into(),
+        r(46,"PK","Pakistan",240_000_000,&["PK"]).ar().mc().ap().sp().h(0.6).into(),
+        r(47,"BD","Bangladesh",175_000_000,&["BD"]).tr().mc().ap().h(0.4).into(),
+        r(48,"SA4","South Asia Rest",55_000_000,&["NP","LK","BT","MV","AF"]).tr().ur().ap().h(0.5).into(),
+        r(49,"ID","Indonesia",280_000_000,&["ID"]).tr().mc().ap().sp().i().h(1.0).into(),
+        r(50,"TH","Thailand",72_000_000,&["TH"]).tr().mc().ap().sp().h(2.0).into(),
+        r(51,"VN","Vietnam",100_000_000,&["VN"]).tr().mc().ap().sp().h(2.5).au().into(),
+        r(52,"PH","Philippines",117_000_000,&["PH"]).tr().mc().ap().sp().i().h(1.0).into(),
+        r(53,"MM","Myanmar",55_000_000,&["MM"]).tr().ur().ap().h(0.6).fs().into(),
+        r(54,"MY","Malaysia",34_000_000,&["MY"]).tr().ur().ap().sp().h(2.0).into(),
+        r(55,"SEA","Southeast Asia Rest",60_000_000,&["KH","LA","BN","TL","SG","BN"]).tr().ur().ap().sp().h(1.5).into(),
+        r(56,"CN","China",1_425_000_000,&["CN"]).te().mc().ap().sp().h(4.0).au().m(1.0).ag(0.8).into(),
+        r(57,"JP","Japan",124_000_000,&["JP"]).te().mc().ap().sp().i().w().h(13.0).m(0.7).into(),
+        r(58,"KR","South Korea",52_000_000,&["KR"]).te().mc().ap().sp().w().h(12.0).m(0.6).into(),
+        r(59,"KP","North Korea",26_000_000,&["KP"]).te().ur().au().h(1.0).into(),
+        r(60,"TW","Taiwan",24_000_000,&["TW"]).tr().ur().ap().sp().i().w().h(6.0).m(0.5).into(),
+        r(61,"AU","Australia",27_000_000,&["AU"]).ar().ur().ap().sp().i().w().h(8.0).into(),
+        r(62,"NZ","New Zealand",5_200_000,&["NZ"]).te().ur().ap().sp().i().w().h(6.0).into(),
+        r(63,"OC","Oceania Rest",15_000_000,&["PG","FJ","SB","VU","WS","TO","KI","MH","FM","PW","TV","NR","NC","PF","GU"]).tr().ru().ap().sp().i().h(0.5).into(),
+        r(64,"GL","Greenland",57_000,&["GL"]).ac().ru().i().h(3.0).into(),
     ]
 }
 
-/// Map SVG country codes to region IDs.
-/// This is used to build the lookup table from the rasterized SVG.
-pub fn svg_code_to_region_map(regions: &[Region]) -> std::collections::HashMap<String, u16> {
-    let mut map = std::collections::HashMap::new();
+pub fn svg_code_to_region_map(regions: &[Region]) -> HashMap<String, u16> {
+    let mut map = HashMap::new();
     for region in regions {
         for code in &region.svg_codes {
             map.insert(code.clone(), region.id);
