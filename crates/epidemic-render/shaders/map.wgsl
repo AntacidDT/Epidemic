@@ -119,16 +119,15 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         color += HOVER_TINT;
     }
 
-    // Border detection: compare with neighbor texels
+    // Border detection: compare with neighbor texels — thin 1px lines
     let texel = vec2<f32>(1.0 / uniforms.map_w, 1.0 / uniforms.map_h);
     let left  = u32(textureSample(map_texture, map_sampler, in.uv + vec2<f32>(-texel.x, 0.0)).r * 255.0 + 0.5);
     let right = u32(textureSample(map_texture, map_sampler, in.uv + vec2<f32>( texel.x, 0.0)).r * 255.0 + 0.5);
     let up    = u32(textureSample(map_texture, map_sampler, in.uv + vec2<f32>(0.0, -texel.y)).r * 255.0 + 0.5);
     let down  = u32(textureSample(map_texture, map_sampler, in.uv + vec2<f32>(0.0,  texel.y)).r * 255.0 + 0.5);
 
-    // If any neighbor is a different region (or ocean), draw border
     if left != region_id || right != region_id || up != region_id || down != region_id {
-        color = BORDER;
+        color = color * 0.3; // darken edge instead of full black
     }
 
     return vec4<f32>(color, 1.0);
