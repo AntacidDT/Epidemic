@@ -869,14 +869,22 @@ fn build_gameplay_hud(ctx: &egui::Context, world: &mut World,
             }
         });
 
-    // ─── Bottom: News ───
-    egui::TopBottomPanel::bottom("news").exact_height(32.0)
-        .frame(egui::Frame::new().fill(bg).stroke(egui::Stroke::new(1.0, border)).inner_margin(egui::Margin::symmetric(16, 6)))
+    // ─── Bottom: News Ticker ───
+    egui::TopBottomPanel::bottom("news").exact_height(36.0)
+        .frame(egui::Frame::new().fill(bg).stroke(egui::Stroke::new(1.0, border)).inner_margin(egui::Margin::symmetric(16, 8)))
         .show(ctx, |ui| {
-            ui.horizontal_centered(|ui| {
-                if let Some(msg) = world.news.last() {
-                    ui.label(egui::RichText::new(format!("BREAKING: {msg}")).size(11.0).color(warning));
-                } else {
+            ui.horizontal(|ui| {
+                // Show last 3 news items
+                let news_count = world.news.len();
+                let start = if news_count > 3 { news_count - 3 } else { 0 };
+                for (i, msg) in world.news[start..].iter().enumerate() {
+                    if i > 0 {
+                        ui.separator();
+                    }
+                    let color = if i == news_count - start - 1 { warning } else { muted };
+                    ui.label(egui::RichText::new(msg).size(11.0).color(color));
+                }
+                if news_count == 0 {
                     ui.label(egui::RichText::new("No active reports").size(11.0).color(muted));
                 }
             });
