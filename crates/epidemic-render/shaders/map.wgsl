@@ -96,16 +96,14 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let data = regions[region_id];
     let is_hovered = f32(region_id == u32(uniforms.hovered_region));
 
-    // Base color: healthy blue-green -> infected red -> dead dark
+    // Base color: healthy green -> infected red -> dead dark
     var color: vec3<f32>;
 
     if data.fallen == 1u {
         color = DEAD;
     } else if data.infection_pct < 0.01 {
-        // Healthy
         color = HEALTHY;
     } else {
-        // Blend healthy -> infected based on infection %
         let pct = clamp(data.infection_pct, 0.0, 1.0);
         color = mix(HEALTHY, INFECTED, pct);
     }
@@ -121,14 +119,17 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         color += HOVER_TINT;
     }
 
-    // Border detection via UV edge smoothing
-    let px = in.uv.x * uniforms.map_w;
-    let py = in.uv.y * uniforms.map_h;
-    let fract_x = fract(px);
-    let fract_y = fract(py);
-    let edge = min(min(fract_x, 1.0 - fract_x), min(fract_y, 1.0 - fract_y));
-    let border = smoothstep(0.0, 0.06, edge);
-    color = mix(BORDER, color, border);
+    // Border detection: compare with neighbor texels
+    let texel = vec2<f32>(1.0 / uniforms.map_w, 1.0 / uniforms.map_h);
+    let left  = u32(textureSample(map_texture, map_sampler, in.uv + vec2<f32>(-texel.x, 0.0)).r * 255.0 + 0.5);
+    let right = u32(textureSample(map_texture, map_sampler, in.uv + vec2<f32>( texel.x, 0.0)).r * 255.0 + 0.5);
+    let up    = u32(textureSample(map_texture, map_sampler, in.uv + vec2<f32>(0.0, -texel.y)).r * 255.0 + 0.5);
+    let down  = u32(textureSample(map_texture, map_sampler, in.uv + vec2<f32>(0.0,  texel.y)).r * 255.0 + 0.5);
+
+    // If any neighbor is a different region (or ocean), draw border
+    if left != region_id || right != region_id || up != region_id || down != region_id {
+        color = BORDER;
+    }
 
     return vec4<f32>(color, 1.0);
 }
