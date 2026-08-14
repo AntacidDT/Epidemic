@@ -269,120 +269,126 @@ pub fn build_regions() -> Vec<Region> {
         r(110,"CV","Cape Verde",600_000,&["CV","Cape Verde"]).tr().ur().ap().sp().i().h(1.0).into(),
 
         // ═══════════════════════════════════════
+        // SUDAN
+        // ═══════════════════════════════════════
+        r(111,"SD","Sudan",48_000_000,&["SD"]).ar().ru().ap().h(0.3).fs().into(),
+        r(112,"SS","South Sudan",11_000_000,&["SS"]).tr().ru().h(0.1).fs().into(),
+
+        // ═══════════════════════════════════════
         // EAST AFRICA
         // ═══════════════════════════════════════
-        r(111,"ET","Ethiopia",126_000_000,&["ET","Ethiopia"]).tr().ru().ap().h(0.3).into(),
+        r(115,"ET","Ethiopia",126_000_000,&["ET","Ethiopia"]).tr().ru().ap().h(0.3).into(),
         r(112,"KE","Kenya",56_000_000,&["KE","Kenya"]).tr().ur().ap().h(0.5).into(),
-        r(113,"TZ","Tanzania",65_000_000,&["TZ","Tanzania"]).tr().ru().ap().h(0.3).into(),
-        r(114,"UG","Uganda",48_000_000,&["UG","Uganda"]).tr().ur().ap().h(0.3).into(),
-        r(115,"RW","Rwanda",14_000_000,&["RW","Rwanda"]).tr().ur().h(0.5).into(),
-        r(116,"BI","Burundi",13_000_000,&["BI","Burundi"]).tr().ru().h(0.2).into(),
-        r(117,"DJ","Djibouti",1_100_000,&["DJ","Djibouti"]).ar().ur().ap().sp().h(0.5).into(),
-        r(118,"ER","Eritrea",3_700_000,&["ER","Eritrea"]).ar().ru().ap().h(0.3).fs().into(),
-        r(119,"SO","Somalia",18_000_000,&["SO","Somalia"]).ar().ru().ap().h(0.2).fs().into(),
-        r(120,"MG","Madagascar",30_000_000,&["MG","Madagascar"]).tr().ru().ap().sp().i().h(0.3).into(),
-        r(121,"MZ","Mozambique",33_000_000,&["MZ","Mozambique"]).tr().ru().ap().sp().h(0.2).into(),
-        r(122,"MW","Malawi",20_000_000,&["MW","Malawi"]).tr().ru().h(0.2).into(),
-        r(123,"ZM","Zambia",20_000_000,&["ZM","Zambia"]).tr().ru().ap().h(0.3).into(),
-        r(124,"ZW","Zimbabwe",16_000_000,&["ZW","Zimbabwe"]).tr().ru().ap().h(0.3).into(),
+        r(115,"TZ","Tanzania",65_000_000,&["TZ","Tanzania"]).tr().ru().ap().h(0.3).into(),
+        r(116,"UG","Uganda",48_000_000,&["UG","Uganda"]).tr().ur().ap().h(0.3).into(),
+        r(117,"RW","Rwanda",14_000_000,&["RW","Rwanda"]).tr().ur().h(0.5).into(),
+        r(118,"BI","Burundi",13_000_000,&["BI","Burundi"]).tr().ru().h(0.2).into(),
+        r(119,"DJ","Djibouti",1_100_000,&["DJ","Djibouti"]).ar().ur().ap().sp().h(0.5).into(),
+        r(120,"ER","Eritrea",3_700_000,&["ER","Eritrea"]).ar().ru().ap().h(0.3).fs().into(),
+        r(121,"SO","Somalia",18_000_000,&["SO","Somalia"]).ar().ru().ap().h(0.2).fs().into(),
+        r(122,"MG","Madagascar",30_000_000,&["MG","Madagascar"]).tr().ru().ap().sp().i().h(0.3).into(),
+        r(123,"MZ","Mozambique",33_000_000,&["MZ","Mozambique"]).tr().ru().ap().sp().h(0.2).into(),
+        r(124,"MW","Malawi",20_000_000,&["MW","Malawi"]).tr().ru().h(0.2).into(),
+        r(125,"ZM","Zambia",20_000_000,&["ZM","Zambia"]).tr().ru().ap().h(0.3).into(),
+        r(126,"ZW","Zimbabwe",16_000_000,&["ZW","Zimbabwe"]).tr().ru().ap().h(0.3).into(),
 
         // ═══════════════════════════════════════
         // CENTRAL AFRICA
         // ═══════════════════════════════════════
-        r(125,"CD","DR Congo",102_000_000,&["CD"]).tr().ru().ap().h(0.1).fs().into(),
-        r(126,"CG","Republic of Congo",6_000_000,&["CG"]).tr().ru().ap().h(0.2).into(),
-        r(127,"CM","Cameroon",28_000_000,&["CM","Cameroon"]).tr().ur().ap().h(0.4).into(),
-        r(128,"GA","Gabon",2_400_000,&["GA","Gabon"]).tr().ur().ap().h(0.8).into(),
-        r(129,"GQ","Equatorial Guinea",1_700_000,&["GQ","Equatorial Guinea"]).tr().ur().h(0.5).into(),
-        r(130,"TD","Chad",17_000_000,&["TD","Chad"]).ar().ru().ap().h(0.1).fs().into(),
-        r(131,"CF","Central African Republic",5_000_000,&["CF"]).tr().ru().h(0.1).fs().into(),
-        r(132,"AO","Angola",36_000_000,&["Angola"]).tr().ru().ap().h(0.3).into(),
-        r(133,"ST","São Tomé and Principe",230_000,&["São Tomé and Principe"]).tr().ru().i().h(0.5).into(),
+        r(127,"CD","DR Congo",102_000_000,&["CD"]).tr().ru().ap().h(0.1).fs().into(),
+        r(128,"CG","Republic of Congo",6_000_000,&["CG"]).tr().ru().ap().h(0.2).into(),
+        r(129,"CM","Cameroon",28_000_000,&["CM","Cameroon"]).tr().ur().ap().h(0.4).into(),
+        r(130,"GA","Gabon",2_400_000,&["GA","Gabon"]).tr().ur().ap().h(0.8).into(),
+        r(131,"GQ","Equatorial Guinea",1_700_000,&["GQ","Equatorial Guinea"]).tr().ur().h(0.5).into(),
+        r(132,"TD","Chad",17_000_000,&["TD","Chad"]).ar().ru().ap().h(0.1).fs().into(),
+        r(133,"CF","Central African Republic",5_000_000,&["CF"]).tr().ru().h(0.1).fs().into(),
+        r(134,"AO","Angola",36_000_000,&["AO"]).tr().ru().ap().h(0.3).into(),
+        r(135,"ST","São Tomé and Principe",230_000,&["São Tomé and Principe"]).tr().ru().i().h(0.5).into(),
 
         // ═══════════════════════════════════════
         // SOUTHERN AFRICA
         // ═══════════════════════════════════════
-        r(134,"ZA","South Africa",62_000_000,&["ZA","South Africa"]).tr().ur().ap().sp().h(2.0).into(),
-        r(135,"NA","Namibia",2_600_000,&["NA","Namibia"]).ar().ru().ap().h(0.5).into(),
-        r(136,"BW","Botswana",2_600_000,&["BW","Botswana"]).ar().ru().ap().h(0.5).into(),
-        r(137,"SZ","Eswatini",1_200_000,&["SZ","Eswatini"]).tr().ru().h(0.5).into(),
-        r(138,"LS","Lesotho",2_300_000,&["LS","Lesotho"]).te().ru().h(0.3).into(),
+        r(136,"ZA","South Africa",62_000_000,&["ZA","South Africa"]).tr().ur().ap().sp().h(2.0).into(),
+        r(137,"NA","Namibia",2_600_000,&["NA","Namibia"]).ar().ru().ap().h(0.5).into(),
+        r(138,"BW","Botswana",2_600_000,&["BW","Botswana"]).ar().ru().ap().h(0.5).into(),
+        r(139,"SZ","Eswatini",1_200_000,&["SZ","Eswatini"]).tr().ru().h(0.5).into(),
+        r(140,"LS","Lesotho",2_300_000,&["LS","Lesotho"]).te().ru().h(0.3).into(),
 
         // ═══════════════════════════════════════
         // CENTRAL ASIA
         // ═══════════════════════════════════════
-        r(139,"KZ","Kazakhstan",20_000_000,&["KZ","Kazakhstan"]).ar().ur().ap().h(2.5).au().into(),
-        r(140,"UZ","Uzbekistan",35_000_000,&["UZ","Uzbekistan"]).ar().ur().ap().h(1.0).au().into(),
-        r(141,"TM","Turkmenistan",6_500_000,&["TM","Turkmenistan"]).ar().ur().ap().h(0.8).au().into(),
-        r(142,"KG","Kyrgyzstan",7_000_000,&["KG","Kyrgyzstan"]).ar().ru().ap().h(0.8).into(),
-        r(143,"TJ","Tajikistan",10_000_000,&["TJ","Tajikistan"]).ar().ru().ap().h(0.6).into(),
+        r(141,"KZ","Kazakhstan",20_000_000,&["KZ","Kazakhstan"]).ar().ur().ap().h(2.5).au().into(),
+        r(142,"UZ","Uzbekistan",35_000_000,&["UZ","Uzbekistan"]).ar().ur().ap().h(1.0).au().into(),
+        r(143,"TM","Turkmenistan",6_500_000,&["TM","Turkmenistan"]).ar().ur().ap().h(0.8).au().into(),
+        r(144,"KG","Kyrgyzstan",7_000_000,&["KG","Kyrgyzstan"]).ar().ru().ap().h(0.8).into(),
+        r(145,"TJ","Tajikistan",10_000_000,&["TJ","Tajikistan"]).ar().ru().ap().h(0.6).into(),
 
         // ═══════════════════════════════════════
         // AFGHANISTAN
         // ═══════════════════════════════════════
-        r(144,"AF","Afghanistan",41_000_000,&["AF","Afghanistan"]).ar().ru().ap().h(0.3).fs().into(),
+        r(146,"AF","Afghanistan",41_000_000,&["AF","Afghanistan"]).ar().ru().ap().h(0.3).fs().into(),
 
         // ═══════════════════════════════════════
         // SOUTH ASIA
         // ═══════════════════════════════════════
-        r(145,"IN","India",1_450_000_000,&["IN","India"]).tr().mc().ap().sp().h(0.5).m(0.6).ag(0.7).into(),
-        r(146,"PK","Pakistan",240_000_000,&["PK","Pakistan"]).ar().mc().ap().sp().h(0.6).into(),
-        r(147,"BD","Bangladesh",175_000_000,&["BD","Bangladesh"]).tr().mc().ap().h(0.4).into(),
-        r(148,"NP","Nepal",30_000_000,&["NP","Nepal"]).te().ur().h(0.5).into(),
-        r(149,"LK","Sri Lanka",22_000_000,&["LK","Sri Lanka"]).tr().ur().ap().sp().i().h(1.0).into(),
-        r(150,"BT","Bhutan",780_000,&["BT","Bhutan"]).te().ru().h(0.5).into(),
-        r(151,"MV","Maldives",520_000,&["MV","Maldives"]).tr().ur().ap().sp().i().h(1.5).into(),
+        r(147,"IN","India",1_450_000_000,&["IN","India"]).tr().mc().ap().sp().h(0.5).m(0.6).ag(0.7).into(),
+        r(148,"PK","Pakistan",240_000_000,&["PK","Pakistan"]).ar().mc().ap().sp().h(0.6).into(),
+        r(149,"BD","Bangladesh",175_000_000,&["BD","Bangladesh"]).tr().mc().ap().h(0.4).into(),
+        r(150,"NP","Nepal",30_000_000,&["NP","Nepal"]).te().ur().h(0.5).into(),
+        r(151,"LK","Sri Lanka",22_000_000,&["LK","Sri Lanka"]).tr().ur().ap().sp().i().h(1.0).into(),
+        r(152,"BT","Bhutan",780_000,&["BT","Bhutan"]).te().ru().h(0.5).into(),
+        r(153,"MV","Maldives",520_000,&["MV","Maldives"]).tr().ur().ap().sp().i().h(1.5).into(),
 
         // ═══════════════════════════════════════
         // SOUTHEAST ASIA
         // ═══════════════════════════════════════
-        r(152,"ID","Indonesia",280_000_000,&["ID","Indonesia"]).tr().mc().ap().sp().i().h(1.0).into(),
-        r(153,"TH","Thailand",72_000_000,&["TH","Thailand"]).tr().mc().ap().sp().h(2.0).into(),
-        r(154,"VN","Vietnam",100_000_000,&["VN","Vietnam"]).tr().mc().ap().sp().h(2.5).au().into(),
-        r(155,"PH","Philippines",117_000_000,&["PH","Philippines"]).tr().mc().ap().sp().i().h(1.0).into(),
-        r(156,"MM","Myanmar",55_000_000,&["MM","Myanmar"]).tr().ur().ap().h(0.6).fs().into(),
-        r(157,"MY","Malaysia",34_000_000,&["MY","Malaysia"]).tr().ur().ap().sp().h(2.0).into(),
-        r(158,"KH","Cambodia",17_000_000,&["KH","Cambodia"]).tr().ur().ap().h(0.8).into(),
-        r(159,"LA","Laos",7_500_000,&["LA","Lao PDR"]).tr().ru().h(0.5).into(),
-        r(160,"SG","Singapore",5_900_000,&["SG","Singapore"]).tr().ur().ap().sp().i().w().h(5.0).m(0.5).into(),
-        r(161,"BN","Brunei",450_000,&["BN","Brunei Darussalam"]).tr().ur().ap().sp().i().w().h(3.0).into(),
-        r(162,"TL","Timor-Leste",1_300_000,&["TL","Timor-Leste"]).tr().ru().ap().i().h(0.5).into(),
+        r(154,"ID","Indonesia",280_000_000,&["ID","Indonesia"]).tr().mc().ap().sp().i().h(1.0).into(),
+        r(155,"TH","Thailand",72_000_000,&["TH","Thailand"]).tr().mc().ap().sp().h(2.0).into(),
+        r(156,"VN","Vietnam",100_000_000,&["VN","Vietnam"]).tr().mc().ap().sp().h(2.5).au().into(),
+        r(157,"PH","Philippines",117_000_000,&["PH","Philippines"]).tr().mc().ap().sp().i().h(1.0).into(),
+        r(158,"MM","Myanmar",55_000_000,&["MM","Myanmar"]).tr().ur().ap().h(0.6).fs().into(),
+        r(159,"MY","Malaysia",34_000_000,&["MY","Malaysia"]).tr().ur().ap().sp().h(2.0).into(),
+        r(160,"KH","Cambodia",17_000_000,&["KH","Cambodia"]).tr().ur().ap().h(0.8).into(),
+        r(161,"LA","Laos",7_500_000,&["LA","Lao PDR"]).tr().ru().h(0.5).into(),
+        r(162,"SG","Singapore",5_900_000,&["SG","Singapore"]).tr().ur().ap().sp().i().w().h(5.0).m(0.5).into(),
+        r(163,"BN","Brunei",450_000,&["BN","Brunei Darussalam"]).tr().ur().ap().sp().i().w().h(3.0).into(),
+        r(164,"TL","Timor-Leste",1_300_000,&["TL","Timor-Leste"]).tr().ru().ap().i().h(0.5).into(),
 
         // ═══════════════════════════════════════
         // EAST ASIA
         // ═══════════════════════════════════════
-        r(163,"CN","China",1_425_000_000,&["CN","China"]).te().mc().ap().sp().h(4.0).au().m(1.0).ag(0.8).into(),
-        r(164,"JP","Japan",124_000_000,&["JP","Japan"]).te().mc().ap().sp().i().w().h(13.0).m(0.7).into(),
-        r(165,"KR","South Korea",52_000_000,&["KR","Republic of Korea"]).te().mc().ap().sp().w().h(12.0).m(0.6).into(),
-        r(166,"KP","North Korea",26_000_000,&["KP","Dem. Rep. Korea"]).te().ur().au().h(1.0).into(),
-        r(167,"TW","Taiwan",24_000_000,&["TW","Taiwan"]).tr().ur().ap().sp().i().w().h(6.0).m(0.5).into(),
-        r(168,"MN","Mongolia",3_400_000,&["MN","Mongolia"]).ac().ru().ap().h(1.5).into(),
+        r(165,"CN","China",1_425_000_000,&["CN","China"]).te().mc().ap().sp().h(4.0).au().m(1.0).ag(0.8).into(),
+        r(166,"JP","Japan",124_000_000,&["JP","Japan"]).te().mc().ap().sp().i().w().h(13.0).m(0.7).into(),
+        r(167,"KR","South Korea",52_000_000,&["KR","Republic of Korea"]).te().mc().ap().sp().w().h(12.0).m(0.6).into(),
+        r(168,"KP","North Korea",26_000_000,&["KP","Dem. Rep. Korea"]).te().ur().au().h(1.0).into(),
+        r(169,"TW","Taiwan",24_000_000,&["TW","Taiwan"]).tr().ur().ap().sp().i().w().h(6.0).m(0.5).into(),
+        r(170,"MN","Mongolia",3_400_000,&["MN","Mongolia"]).ac().ru().ap().h(1.5).into(),
 
         // ═══════════════════════════════════════
         // OCEANIA
         // ═══════════════════════════════════════
-        r(169,"AU","Australia",27_000_000,&["AU","Australia"]).ar().ur().ap().sp().i().w().h(8.0).into(),
-        r(170,"NZ","New Zealand",5_200_000,&["NZ","New Zealand"]).te().ur().ap().sp().i().w().h(6.0).into(),
-        r(171,"PG","Papua New Guinea",10_000_000,&["PG","Papua New Guinea"]).tr().ru().ap().i().h(0.3).into(),
-        r(172,"FJ","Fiji",930_000,&["FJ","Fiji"]).tr().ur().ap().sp().i().h(1.0).into(),
-        r(173,"SB","Solomon Islands",720_000,&["SB","Solomon Islands"]).tr().ru().ap().i().h(0.3).into(),
-        r(174,"VU","Vanuatu",330_000,&["VU","Vanuatu"]).tr().ru().ap().i().h(0.5).into(),
-        r(175,"WS","Samoa",220_000,&["WS","Samoa"]).tr().ru().ap().i().h(0.5).into(),
-        r(176,"TO","Tonga",100_000,&["TO","Tonga"]).tr().ru().ap().i().h(0.5).into(),
-        r(177,"TV","Tuvalu",11_000,&["TV","Tuvalu"]).tr().ru().i().h(0.3).into(),
-        r(178,"NR","Nauru",13_000,&["NR","Nauru"]).tr().ru().i().h(0.3).into(),
-        r(179,"PW","Palau",18_000,&["PW","Palau"]).tr().ru().i().h(0.5).into(),
-        r(180,"MH","Marshall Islands",42_000,&["MH","Marshall Islands"]).tr().ru().i().h(0.5).into(),
-        r(181,"FM","Micronesia",110_000,&["FM","Federated States of Micronesia"]).tr().ru().i().h(0.5).into(),
-        r(182,"KI","Kiribati",130_000,&["KI","Kiribati"]).tr().ru().i().h(0.3).into(),
-        r(183,"NC","New Caledonia",290_000,&["NC","New Caledonia"]).tr().ur().ap().sp().i().h(1.5).into(),
-        r(184,"PF","French Polynesia",280_000,&["PF","French Polynesia"]).tr().ur().ap().sp().i().h(1.0).into(),
-        r(185,"GU","Guam",170_000,&["GU","Guam"]).tr().ur().ap().i().h(1.5).into(),
+        r(171,"AU","Australia",27_000_000,&["AU","Australia"]).ar().ur().ap().sp().i().w().h(8.0).into(),
+        r(172,"NZ","New Zealand",5_200_000,&["NZ","New Zealand"]).te().ur().ap().sp().i().w().h(6.0).into(),
+        r(173,"PG","Papua New Guinea",10_000_000,&["PG","Papua New Guinea"]).tr().ru().ap().i().h(0.3).into(),
+        r(174,"FJ","Fiji",930_000,&["FJ","Fiji"]).tr().ur().ap().sp().i().h(1.0).into(),
+        r(175,"SB","Solomon Islands",720_000,&["SB","Solomon Islands"]).tr().ru().ap().i().h(0.3).into(),
+        r(176,"VU","Vanuatu",330_000,&["VU","Vanuatu"]).tr().ru().ap().i().h(0.5).into(),
+        r(177,"WS","Samoa",220_000,&["WS","Samoa"]).tr().ru().ap().i().h(0.5).into(),
+        r(178,"TO","Tonga",100_000,&["TO","Tonga"]).tr().ru().ap().i().h(0.5).into(),
+        r(179,"TV","Tuvalu",11_000,&["TV","Tuvalu"]).tr().ru().i().h(0.3).into(),
+        r(180,"NR","Nauru",13_000,&["NR","Nauru"]).tr().ru().i().h(0.3).into(),
+        r(181,"PW","Palau",18_000,&["PW","Palau"]).tr().ru().i().h(0.5).into(),
+        r(182,"MH","Marshall Islands",42_000,&["MH","Marshall Islands"]).tr().ru().i().h(0.5).into(),
+        r(183,"FM","Micronesia",110_000,&["FM","Federated States of Micronesia"]).tr().ru().i().h(0.5).into(),
+        r(184,"KI","Kiribati",130_000,&["KI","Kiribati"]).tr().ru().i().h(0.3).into(),
+        r(185,"NC","New Caledonia",290_000,&["NC","New Caledonia"]).tr().ur().ap().sp().i().h(1.5).into(),
+        r(186,"PF","French Polynesia",280_000,&["PF","French Polynesia"]).tr().ur().ap().sp().i().h(1.0).into(),
+        r(187,"GU","Guam",170_000,&["GU","Guam"]).tr().ur().ap().i().h(1.5).into(),
 
         // ═══════════════════════════════════════
         // GREENLAND
         // ═══════════════════════════════════════
-        r(186,"GL","Greenland",57_000,&["GL","Greenland"]).ac().ru().i().h(3.0).into(),
+        r(188,"GL","Greenland",57_000,&["GL","Greenland"]).ac().ru().i().h(3.0).into(),
     ]
 }
 

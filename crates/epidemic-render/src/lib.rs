@@ -172,7 +172,7 @@ impl Renderer {
         });
 
         // Region data storage buffer (115 entries, index 0 = dummy)
-        let region_data = vec![RegionGpuData { infection_pct: 0.0, death_pct: 0.0, panic: 0.0, fallen: 0, healthcare_collapse: 0, borders_open: 1, _pad0: 0, _pad1: 0 }; 187];
+        let region_data = vec![RegionGpuData { infection_pct: 0.0, death_pct: 0.0, panic: 0.0, fallen: 0, healthcare_collapse: 0, borders_open: 1, _pad0: 0, _pad1: 0 }; 189];
         let region_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("regions"), contents: bytemuck::cast_slice(&region_data),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
@@ -272,7 +272,7 @@ impl Renderer {
         self.queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[uniforms]));
 
         // Update region data buffer
-        let mut region_data = vec![RegionGpuData { infection_pct: 0.0, death_pct: 0.0, panic: 0.0, fallen: 0, healthcare_collapse: 0, borders_open: 1, _pad0: 0, _pad1: 0 }; 187];
+        let mut region_data = vec![RegionGpuData { infection_pct: 0.0, death_pct: 0.0, panic: 0.0, fallen: 0, healthcare_collapse: 0, borders_open: 1, _pad0: 0, _pad1: 0 }; 189];
         for r in &world.regions {
             if (r.id as usize) < region_data.len() {
                 region_data[r.id as usize] = RegionGpuData {
