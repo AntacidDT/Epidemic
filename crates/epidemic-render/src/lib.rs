@@ -30,7 +30,7 @@ struct RegionGpuData {
     fallen: u32,
     healthcare_collapse: u32,
     borders_open: u32,
-    _pad0: u32,
+    newly_infected: u32,
     _pad1: u32,
 }
 
@@ -186,7 +186,7 @@ impl Renderer {
         });
 
         // Region data storage buffer (115 entries, index 0 = dummy)
-        let region_data = vec![RegionGpuData { infection_pct: 0.0, death_pct: 0.0, panic: 0.0, fallen: 0, healthcare_collapse: 0, borders_open: 1, _pad0: 0, _pad1: 0 }; 189];
+        let region_data = vec![RegionGpuData { infection_pct: 0.0, death_pct: 0.0, panic: 0.0, fallen: 0, healthcare_collapse: 0, borders_open: 1, newly_infected: 0, _pad1: 0 }; 189];
         let region_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("regions"), contents: bytemuck::cast_slice(&region_data),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
@@ -321,7 +321,7 @@ impl Renderer {
         self.queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[uniforms]));
 
         // Update region data buffer
-        let mut region_data = vec![RegionGpuData { infection_pct: 0.0, death_pct: 0.0, panic: 0.0, fallen: 0, healthcare_collapse: 0, borders_open: 1, _pad0: 0, _pad1: 0 }; 189];
+        let mut region_data = vec![RegionGpuData { infection_pct: 0.0, death_pct: 0.0, panic: 0.0, fallen: 0, healthcare_collapse: 0, borders_open: 1, newly_infected: 0, _pad1: 0 }; 189];
         for r in &world.regions {
             if (r.id as usize) < region_data.len() {
                 region_data[r.id as usize] = RegionGpuData {
@@ -331,7 +331,8 @@ impl Renderer {
                     fallen: if r.fallen { 1 } else { 0 },
                     healthcare_collapse: if r.healthcare_collapse { 1 } else { 0 },
                     borders_open: if r.borders_open { 1 } else { 0 },
-                    _pad0: 0, _pad1: 0,
+                    newly_infected: if r.newly_infected { 1 } else { 0 },
+                    _pad1: 0,
                 };
             }
         }

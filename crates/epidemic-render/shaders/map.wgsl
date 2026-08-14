@@ -14,7 +14,7 @@ struct RegionData {
     fallen: u32,
     healthcare_collapse: u32,
     borders_open: u32,
-    _pad0: u32,
+    newly_infected: u32,  // 1 if just got infected this tick
     _pad1: u32,
 };
 
@@ -119,6 +119,12 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     } else {
         let pct = clamp(data.infection_pct, 0.0, 1.0);
         color = mix(HEALTHY, INFECTED, pct) + grad;
+
+        // Newly infected pulse effect
+        if data.newly_infected == 1u {
+            let pulse = sin(uniforms.time * 8.0) * 0.3 + 0.3;
+            color = mix(color, vec3<f32>(1.0, 0.5, 0.0), pulse);
+        }
     }
 
     if data.healthcare_collapse == 1u {

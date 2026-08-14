@@ -42,6 +42,7 @@ pub struct Region {
     pub agricultural_capacity: f32,
     pub infection_history: Vec<(u64, u64)>,
     pub death_history: Vec<(u64, u64)>,
+    pub newly_infected: bool,  // true if just got infected this tick
 }
 
 impl Region {
@@ -60,6 +61,7 @@ impl Region {
             fallen: false,
             manufacturing_capacity: 0.3, agricultural_capacity: 0.3,
             infection_history: Vec::new(), death_history: Vec::new(),
+            newly_infected: false,
             svg_codes: svg_codes.iter().map(|s| s.to_string()).collect(),
         }
     }

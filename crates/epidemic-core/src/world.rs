@@ -503,6 +503,13 @@ impl World {
         // Recount
         self.recount();
 
+        // Reset newly_infected flags after 30 ticks
+        for r in &mut self.regions {
+            if r.newly_infected && self.tick % 30 == 0 {
+                r.newly_infected = false;
+            }
+        }
+
         // Endgame
         self.check_endgame();
     }
@@ -811,6 +818,7 @@ impl World {
                 if pseudo_rand(self.tick, from_id as usize, to_id as usize) < chance as f32 {
                     if let Some(r) = self.regions.iter_mut().find(|r| r.id == to_id) {
                         r.infected = 1;
+                        r.newly_infected = true;
                         let name = r.name.clone();
                         self.news.push(format!("Infection reached {name}!"));
                         // DNA reward for spreading to new country
