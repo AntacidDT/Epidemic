@@ -39,7 +39,7 @@ var map_texture: texture_2d<f32>;
 var map_sampler: sampler;
 
 @group(0) @binding(3)
-var<uniform> regions: array<RegionData, 115>;
+var<uniform> regions: array<RegionData, 187>;
 
 @group(0) @binding(4)
 var<uniform> transports: array<TransportData, 200>;
