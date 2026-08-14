@@ -511,12 +511,11 @@ fn build_title_screen(ctx: &egui::Context, world: &mut World, logo: Option<&egui
     bg: egui::Color32, heading: egui::Color32, accent: egui::Color32,
     text: egui::Color32, muted: egui::Color32, surface: egui::Color32, border: egui::Color32) {
     egui::CentralPanel::default().frame(egui::Frame::new().fill(bg)).show(ctx, |ui| {
-        // Background image
+        // Background image - scaled to fit
         if let Some(tex) = bg_image {
-            let rect = ui.max_rect();
-            ui.painter().image(tex.id(), rect, egui::Rect::from_min_max(
-                egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0),
-            ), egui::Color32::WHITE);
+            let avail = ui.available_size();
+            let img = egui::Image::new(tex).fit_to_exact_size(avail);
+            ui.add(img);
         }
 
         ui.vertical_centered(|ui| {
@@ -563,12 +562,11 @@ fn build_game_type_select(ctx: &egui::Context, world: &mut World,
     text: egui::Color32, muted: egui::Color32,
     success: egui::Color32, danger: egui::Color32, info: egui::Color32, warning: egui::Color32) {
     egui::CentralPanel::default().frame(egui::Frame::new().fill(bg).inner_margin(egui::Margin::same(60))).show(ctx, |ui| {
-        // Background image
+        // Background image - scaled to fit
         if let Some(tex) = bg_image {
-            let rect = ui.max_rect();
-            ui.painter().image(tex.id(), rect, egui::Rect::from_min_max(
-                egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0),
-            ), egui::Color32::WHITE);
+            let avail = ui.available_size();
+            let img = egui::Image::new(tex).fit_to_exact_size(avail);
+            ui.add(img);
         }
 
         ui.vertical_centered(|ui| {
@@ -942,12 +940,11 @@ fn build_evolution_menu(ctx: &egui::Context, world: &mut World,
     egui::CentralPanel::default()
         .frame(egui::Frame::new().fill(egui::Color32::from_rgba_premultiplied(0, 0, 0, 180)))
         .show(ctx, |ui| {
-            // Background image
+            // Background image - scaled to fit
             if let Some(tex) = bg_image {
-                let rect = ui.max_rect();
-                ui.painter().image(tex.id(), rect, egui::Rect::from_min_max(
-                    egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0),
-                ), egui::Color32::from_rgba_premultiplied(128, 128, 128, 255));
+                let avail = ui.available_size();
+                let img = egui::Image::new(tex).fit_to_exact_size(avail);
+                ui.add(img);
             }
 
             // Main panel
