@@ -1,0 +1,16 @@
+[app]
+name = "Epidemic NS"
+identifier = "com.epidemicns.app"
+icon = "res/icon"
+label = "Epidemic NS"
+assets = ["res"]
+
+[android]
+gradle-plugins = ["org.jetbrains.kotlin.android:2.1.0"]
+
+[android.sdk]
+platform = 35
+build-tools = "35.0.0"
+
+[target.android]
+rustflags = ["-C", "link-arg=-landroid"]
