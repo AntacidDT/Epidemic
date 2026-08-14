@@ -488,7 +488,10 @@ fn build_ui(ctx: &egui::Context, world: &mut World, logo: Option<&egui::TextureH
         GamePhase::TitleScreen => build_title_screen(ctx, world, logo, bg_mainmenu),
         GamePhase::PathogenSelect => build_game_type_select(ctx, world, bg_gamemode),
         GamePhase::DifficultySelect => build_pathogen_select(ctx, world),
-        GamePhase::SelectOrigin | GamePhase::Playing => {
+        GamePhase::SelectOrigin => {
+            build_country_select(ctx, world, bg_world, hovered_region);
+        }
+        GamePhase::Playing => {
             build_gameplay_hud(ctx, world, hovered_region);
             build_hover_tooltip(ctx, world, hovered_region);
             build_country_detail(ctx, world);
@@ -993,6 +996,129 @@ fn build_pathogen_select(ctx: &egui::Context, world: &mut World) {
             });
         });
     });
+}
+
+// ─── Country Selection Screen ───
+fn build_country_select(ctx: &egui::Context, world: &mut World,
+    bg_image: Option<&egui::TextureHandle>, _hovered_region: Option<u16>) {
+
+    // Color palette
+    let header_fill = egui::Color32::from_rgb(255, 122, 122);     // #FF7A7A
+    let header_outline = egui::Color32::from_rgb(107, 19, 19);    // #6B1313
+    let map_container = egui::Color32::from_rgba_premultiplied(74, 14, 14, 153); // #4A0E0E 60% opacity
+    let placeholder_text = egui::Color32::from_rgb(209, 110, 110); // #D16E6E
+    let tip_title = egui::Color32::from_rgb(232, 130, 130);       // #E88282
+    let tip_body = egui::Color32::from_rgb(232, 130, 130);        // #E88282
+
+    egui::CentralPanel::default()
+        .frame(egui::Frame::new().fill(BLACK))
+        .show(ctx, |ui| {
+            let full_rect = ui.max_rect();
+            let sw = full_rect.width();
+            let sh = full_rect.height();
+
+            // Background image
+            if let Some(tex) = bg_image {
+                ui.put(full_rect, egui::Image::new(tex).fit_to_exact_size(full_rect.size()));
+            }
+
+            // ── A. Main Header Title ──
+            // "What country would you dare" + "to begin?"
+            let header_x = sw * 0.50;
+            let line1_y = sh * 0.08;
+            let line2_y = sh * 0.15;
+
+            draw_outlined_text(
+                ui,
+                "What country would you dare",
+                egui::pos2(header_x, line1_y),
+                egui::FontId::proportional(32.0),
+                header_fill,
+                header_outline,
+                true,
+            );
+
+            draw_outlined_text(
+                ui,
+                "to begin?",
+                egui::pos2(header_x, line2_y),
+                egui::FontId::proportional(32.0),
+                header_fill,
+                header_outline,
+                true,
+            );
+
+            // ── B. Interactive World Map Container ──
+            let map_x = sw * 0.14;
+            let map_y = sh * 0.26;
+            let map_w = sw * 0.72;
+            let map_h = sh * 0.62;
+            let map_rect = egui::Rect::from_min_size(
+                egui::pos2(map_x, map_y),
+                egui::vec2(map_w, map_h),
+            );
+
+            // Map container background
+            ui.painter().rect_filled(map_rect, 8.0, map_container);
+            ui.painter().rect_stroke(map_rect, 8.0, egui::Stroke::new(2.0, border_color()), egui::StrokeKind::Outside);
+
+            // Placeholder text
+            let placeholder_x = sw * 0.50;
+            let placeholder_y = sh * 0.57;
+            let placeholder_galley = ui.painter().layout_no_wrap(
+                "insert world svg here so player can select a country".to_string(),
+                egui::FontId::proportional(14.0),
+                placeholder_text,
+            );
+            ui.painter().galley(
+                egui::pos2(placeholder_x - placeholder_galley.size().x * 0.5, placeholder_y),
+                placeholder_galley,
+                placeholder_text,
+            );
+
+            // ── C. Pro Tip Section ──
+            let tip_x = sw * 0.50;
+            let tip_y = sh * 0.90;
+
+            // "Potentially pro tip:"
+            draw_outlined_text(
+                ui,
+                "Potentially pro tip:",
+                egui::pos2(tip_x, tip_y),
+                egui::FontId::proportional(14.0),
+                tip_title,
+                header_outline,
+                true,
+            );
+
+            // Body text
+            let body_y = sh * 0.94;
+            let body_lines = [
+                "select a populated, but not too good of a healthcare country.",
+                "honestly its your choice tho, choose whatever is best for you.",
+            ];
+
+            for (i, line) in body_lines.iter().enumerate() {
+                let y = body_y + i as f32 * 18.0;
+                let galley = ui.painter().layout_no_wrap(
+                    line.to_string(),
+                    egui::FontId::proportional(12.0),
+                    tip_body,
+                );
+                ui.painter().galley(
+                    egui::pos2(tip_x - galley.size().x * 0.5, y),
+                    galley,
+                    tip_body,
+                );
+            }
+
+            // Note: The actual map rendering happens in the GPU pass
+            // This UI layer just provides the frame and click handling
+        });
+}
+
+fn border_color() -> egui::Color32 {
+    egui::Color32::from_rgb(55, 55, 65)
 }
 
 // ─── Gameplay HUD ───
