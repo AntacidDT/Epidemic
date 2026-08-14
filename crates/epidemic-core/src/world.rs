@@ -7,6 +7,30 @@ use crate::svg_parser;
 // ─────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+pub enum GameType {
+    Campaign,   // Standard: infect and kill everyone before cure
+    FreePlay,   // No cure, no win/lose, just experiment
+    SpeedRun,   // Timer-based, score by time
+}
+
+impl GameType {
+    pub fn name(&self) -> &str {
+        match self {
+            Self::Campaign => "Campaign",
+            Self::FreePlay => "Free Play",
+            Self::SpeedRun => "Speed Run",
+        }
+    }
+    pub fn description(&self) -> &str {
+        match self {
+            Self::Campaign => "Infect the world before the cure completes.",
+            Self::FreePlay => "No pressure. Experiment freely.",
+            Self::SpeedRun => "Race against the clock. Fastest win = best score.",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum GamePhase {
     TitleScreen,
     PathogenSelect,
@@ -300,6 +324,7 @@ pub struct World {
 
     // Global stats
     pub global_panic: f32,             // 0-1.0 average
+    pub game_type: GameType,
 }
 
 impl World {
@@ -341,6 +366,7 @@ impl World {
             symp_cloaked_regions: Vec::new(),
             synergies: all_synergies(),
             global_panic: 0.0,
+            game_type: GameType::Campaign,
         }
     }
 
