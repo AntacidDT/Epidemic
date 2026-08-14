@@ -29,6 +29,13 @@ struct TransportData {
     _pad1: u32,
 };
 
+struct BubbleData {
+    x: f32,
+    y: f32,
+    value: f32,
+    active: f32,
+};
+
 @group(0) @binding(0)
 var<uniform> uniforms: Uniforms;
 
@@ -43,6 +50,9 @@ var<uniform> regions: array<RegionData, 189>;
 
 @group(0) @binding(4)
 var<uniform> transports: array<TransportData, 200>;
+
+@group(0) @binding(5)
+var<uniform> bubbles: array<BubbleData, 10>;
 
 struct VertexOutput {
     @builtin(position) position: vec4<f32>,
@@ -128,6 +138,23 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 
     if left != region_id || right != region_id || up != region_id || down != region_id {
         color = color * 0.3;
+    }
+
+    // Check for DNA bubbles
+    for (var i = 0u; i < 10u; i++) {
+        let bubble = bubbles[i];
+        if bubble.active > 0.5 {
+            let dx = in.uv.x - bubble.x;
+            let dy = in.uv.y - bubble.y;
+            let dist = sqrt(dx * dx + dy * dy);
+            let radius = 0.015 + sin(uniforms.time * 3.0) * 0.003; // pulsing
+            if dist < radius {
+                // DNA bubble: bright orange/gold
+                let intensity = 1.0 - (dist / radius);
+                let bubble_color = vec3<f32>(1.0, 0.7, 0.1);
+                color = mix(color, bubble_color, intensity * 0.8);
+            }
+        }
     }
 
     return vec4<f32>(color, 1.0);

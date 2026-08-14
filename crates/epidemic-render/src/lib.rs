@@ -47,6 +47,15 @@ struct TransportGpuData {
     _pad1: u32,
 }
 
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+struct BubbleData {
+    x: f32,
+    y: f32,
+    value: f32,
+    active: f32,
+}
+
 pub struct Renderer {
     surface: wgpu::Surface<'static>,
     device: wgpu::Device,
@@ -57,6 +66,7 @@ pub struct Renderer {
     uniform_buffer: wgpu::Buffer,
     region_buffer: wgpu::Buffer,
     transport_buffer: wgpu::Buffer,
+    bubble_buffer: wgpu::Buffer,
     bind_group: wgpu::BindGroup,
     start_time: Instant,
     map_texture: wgpu::Texture,
@@ -189,6 +199,13 @@ impl Renderer {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
+        // Bubble data buffer (max 10 bubbles)
+        let bubble_data = vec![BubbleData { x: 0.0, y: 0.0, value: 0.0, active: 0.0 }; 10];
+        let bubble_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("bubbles"), contents: bytemuck::cast_slice(&bubble_data),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
         // Bind group layout
         let bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("bgl"), entries: &[
@@ -202,6 +219,8 @@ impl Renderer {
                     ty: wgpu::BindingType::Buffer { ty: wgpu::BufferBindingType::Uniform, has_dynamic_offset: false, min_binding_size: None }, count: None },
                 wgpu::BindGroupLayoutEntry { binding: 4, visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Buffer { ty: wgpu::BufferBindingType::Uniform, has_dynamic_offset: false, min_binding_size: None }, count: None },
+                wgpu::BindGroupLayoutEntry { binding: 5, visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer { ty: wgpu::BufferBindingType::Uniform, has_dynamic_offset: false, min_binding_size: None }, count: None },
             ],
         });
 
@@ -212,6 +231,7 @@ impl Renderer {
                 wgpu::BindGroupEntry { binding: 2, resource: wgpu::BindingResource::Sampler(&map_sampler) },
                 wgpu::BindGroupEntry { binding: 3, resource: region_buffer.as_entire_binding() },
                 wgpu::BindGroupEntry { binding: 4, resource: transport_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 5, resource: bubble_buffer.as_entire_binding() },
             ],
         });
 
@@ -238,7 +258,7 @@ impl Renderer {
 
         Self {
             surface, device, queue, config, size, pipeline, uniform_buffer,
-            region_buffer, transport_buffer, bind_group, start_time: Instant::now(),
+            region_buffer, transport_buffer, bubble_buffer, bind_group, start_time: Instant::now(),
                         map_texture: map_tex,
             logo_texture: None,
             bg_mainmenu: None,
@@ -329,6 +349,20 @@ impl Renderer {
             };
         }
         self.queue.write_buffer(&self.transport_buffer, 0, bytemuck::cast_slice(&transport_data));
+
+        // Update bubble data
+        let mut bubble_data = vec![BubbleData { x: 0.0, y: 0.0, value: 0.0, active: 0.0 }; 10];
+        for (i, bubble) in world.dna_bubbles.iter().enumerate().take(10) {
+            if !bubble.collected {
+                bubble_data[i] = BubbleData {
+                    x: bubble.x,
+                    y: bubble.y,
+                    value: bubble.value as f32,
+                    active: 1.0,
+                };
+            }
+        }
+        self.queue.write_buffer(&self.bubble_buffer, 0, bytemuck::cast_slice(&bubble_data));
 
         // egui
         let logo = self.logo_texture.clone();
@@ -1379,21 +1413,28 @@ impl ApplicationHandler for App {
 
                 if let Some(r) = self.renderer.as_ref() {
                     let (px, py) = r.screen_to_map(self.cursor_pos, &self.world);
+
+                    // Check for DNA bubble click first
+                    if self.world.phase == GamePhase::Playing {
+                        let nx = self.cursor_pos.x / r.size.width as f64;
+                        let ny = self.cursor_pos.y / r.size.height as f64;
+                        if self.world.collect_bubble(nx as f32, ny as f32) {
+                            return; // bubble collected, don't process further
+                        }
+                    }
+
                     if let Some(region) = self.world.region_at_pixel(px, py) {
                         let rid = region.id;
 
                         if self.world.phase == GamePhase::SelectOrigin {
-                            // Single click to start outbreak
                             let name = region.name.clone();
                             self.world.start_outbreak(rid);
                             if let Some(w) = self.window.as_ref() { w.set_title(&format!("Epidemic NS — {name} outbreak!")); }
                         } else if is_double_click {
-                            // Double-click to open detail panel
                             self.selected_detail = if self.selected_detail == Some(rid) { None } else { Some(rid) };
                             self.world.selected_detail = self.selected_detail;
                         }
                     } else {
-                        // Clicked ocean — close detail panel
                         self.selected_detail = None;
                         self.world.selected_detail = None;
                     }
