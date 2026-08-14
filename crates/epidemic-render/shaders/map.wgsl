@@ -33,7 +33,7 @@ struct BubbleData {
     x: f32,
     y: f32,
     value: f32,
-    active: f32,
+    alive: f32,
 };
 
 @group(0) @binding(0)
@@ -149,7 +149,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     // Check for DNA bubbles
     for (var i = 0u; i < 10u; i++) {
         let bubble = bubbles[i];
-        if bubble.active > 0.5 {
+        if bubble.alive > 0.5 {
             let dx = in.uv.x - bubble.x;
             let dy = in.uv.y - bubble.y;
             let dist = sqrt(dx * dx + dy * dy);
