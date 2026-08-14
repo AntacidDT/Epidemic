@@ -511,45 +511,122 @@ fn build_title_screen(ctx: &egui::Context, world: &mut World, logo: Option<&egui
     bg: egui::Color32, heading: egui::Color32, accent: egui::Color32,
     text: egui::Color32, muted: egui::Color32, surface: egui::Color32, border: egui::Color32) {
     egui::CentralPanel::default().frame(egui::Frame::new().fill(bg)).show(ctx, |ui| {
-        // Background image - scaled to fit
+        // Background image
         if let Some(tex) = bg_image {
-            let avail = ui.available_size();
-            let img = egui::Image::new(tex).fit_to_exact_size(avail);
-            ui.add(img);
+            let rect = ui.max_rect();
+            ui.put(rect, egui::Image::new(tex).fit_to_exact_size(rect.size()));
         }
 
-        ui.vertical_centered(|ui| {
-            ui.add_space(100.0);
-            // Logo
-            if let Some(tex) = logo {
-                ui.image(tex);
-            } else {
-                ui.label(egui::RichText::new("EPIDEMIC").size(56.0).strong().color(heading));
-                ui.label(egui::RichText::new("N A T U R A L   S T R A T E G I E S")
-                    .size(14.0).color(muted).strong());
-            }
-            ui.add_space(80.0);
-            // New Game button
-            let btn = egui::Button::new(egui::RichText::new("NEW GAME").size(16.0).strong().color(heading))
-                .min_size(egui::vec2(220.0, 50.0)).fill(accent).corner_radius(egui::CornerRadius::same(12));
-            if ui.add(btn).clicked() { world.phase = GamePhase::PathogenSelect; }
-            ui.add_space(12.0);
-            // Load Game
-            let save_path = std::path::Path::new("epidemic_save.json");
-            if save_path.exists() {
-                let btn = egui::Button::new(egui::RichText::new("LOAD GAME").size(14.0).strong().color(text))
-                    .min_size(egui::vec2(220.0, 44.0)).fill(surface).corner_radius(egui::CornerRadius::same(12))
-                    .stroke(egui::Stroke::new(1.0, border));
-                if ui.add(btn).clicked() {
-                    match epidemic_core::load_game(save_path) {
-                        Ok(data) => { data.apply_to_world(world); world.phase = GamePhase::Playing; }
-                        Err(e) => { println!("Load failed: {e}"); }
-                    }
-                }
-                ui.add_space(12.0);
-            }
-            // Version
-            ui.label(egui::RichText::new("v0.2.0").size(11.0).color(border));
+        // Overlay content
+        let full_rect = ui.max_rect();
+        ui.allocate_ui_at_rect(full_rect, |ui| {
+            ui.horizontal(|ui| {
+                // Left side: buttons
+                ui.allocate_ui_at_rect(
+                    egui::Rect::from_min_size(
+                        egui::pos2(60.0, full_rect.height() * 0.35),
+                        egui::vec2(200.0, 300.0),
+                    ),
+                    |ui| {
+                        ui.vertical(|ui| {
+                            ui.spacing_mut().button_padding = egui::vec2(20.0, 12.0);
+
+                            // Play button
+                            let play_btn = egui::Button::new(
+                                egui::RichText::new("PLAY").size(18.0).strong().color(heading)
+                            )
+                            .min_size(egui::vec2(180.0, 50.0))
+                            .fill(accent)
+                            .corner_radius(egui::CornerRadius::same(10));
+                            if ui.add(play_btn).clicked() {
+                                world.phase = GamePhase::PathogenSelect;
+                            }
+
+                            ui.add_space(16.0);
+
+                            // Load button (if save exists)
+                            let save_path = std::path::Path::new("epidemic_save.json");
+                            if save_path.exists() {
+                                let load_btn = egui::Button::new(
+                                    egui::RichText::new("LOAD GAME").size(14.0).color(text)
+                                )
+                                .min_size(egui::vec2(180.0, 44.0))
+                                .fill(surface)
+                                .corner_radius(egui::CornerRadius::same(10))
+                                .stroke(egui::Stroke::new(1.0, border));
+                                if ui.add(load_btn).clicked() {
+                                    if let Ok(data) = epidemic_core::load_game(save_path) {
+                                        data.apply_to_world(world);
+                                        world.phase = GamePhase::Playing;
+                                    }
+                                }
+                                ui.add_space(16.0);
+                            }
+
+                            // Credits button
+                            let credits_btn = egui::Button::new(
+                                egui::RichText::new("CREDITS").size(14.0).color(muted)
+                            )
+                            .min_size(egui::vec2(180.0, 44.0))
+                            .fill(surface)
+                            .corner_radius(egui::CornerRadius::same(10))
+                            .stroke(egui::Stroke::new(1.0, border));
+                            let _ = credits_btn;
+                            // TODO: credits screen
+
+                            ui.add_space(12.0);
+
+                            // Settings button
+                            let settings_btn = egui::Button::new(
+                                egui::RichText::new("SETTINGS").size(14.0).color(muted)
+                            )
+                            .min_size(egui::vec2(180.0, 44.0))
+                            .fill(surface)
+                            .corner_radius(egui::CornerRadius::same(10))
+                            .stroke(egui::Stroke::new(1.0, border));
+                            let _ = settings_btn;
+                            // TODO: settings screen
+                        });
+                    },
+                );
+
+                // Right side: title + description
+                ui.allocate_ui_at_rect(
+                    egui::Rect::from_min_size(
+                        egui::pos2(full_rect.width() * 0.45, full_rect.height() * 0.15),
+                        egui::vec2(500.0, 400.0),
+                    ),
+                    |ui| {
+                        ui.vertical(|ui| {
+                            // Title
+                            ui.label(
+                                egui::RichText::new("EPIDEMIC")
+                                    .size(64.0)
+                                    .strong()
+                                    .color(heading),
+                            );
+                            ui.add_space(4.0);
+                            ui.label(
+                                egui::RichText::new("Natural Strategies")
+                                    .size(20.0)
+                                    .color(muted),
+                            );
+                            ui.add_space(24.0);
+
+                            // Description
+                            ui.label(
+                                egui::RichText::new(
+                                    "Engineer a pathogen to infect and eradicate humanity.\n\
+                                     Evolve transmission, symptoms, and abilities.\n\
+                                     Outsmart governments and beat the cure."
+                                )
+                                .size(14.0)
+                                .color(text),
+                            );
+                        });
+                    },
+                );
+            });
         });
     });
 }
