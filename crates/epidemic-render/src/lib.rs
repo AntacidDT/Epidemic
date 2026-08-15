@@ -15,6 +15,30 @@ use std::time::Instant;
 mod theme;
 use theme::*;
 
+// Backward-compatible color aliases (call theme functions)
+macro_rules! theme_colors {
+    () => {
+        const BLACK: egui::Color32 = egui::Color32::from_rgb(7, 7, 7);
+        const WHITE: egui::Color32 = egui::Color32::from_rgb(255, 255, 255);
+        const PRIMARY: egui::Color32 = egui::Color32::from_rgb(255, 0, 0);
+        const SECONDARY: egui::Color32 = egui::Color32::from_rgb(185, 41, 38);
+        const TERTIARY: egui::Color32 = egui::Color32::from_rgb(255, 87, 87);
+        const EXTRA: egui::Color32 = egui::Color32::from_rgb(255, 161, 83);
+        const BG_DARK: egui::Color32 = egui::Color32::from_rgb(12, 12, 14);
+        const BG_PANEL: egui::Color32 = egui::Color32::from_rgb(18, 18, 22);
+        const BG_CARD: egui::Color32 = egui::Color32::from_rgb(28, 28, 34);
+        const BG_HOVER: egui::Color32 = egui::Color32::from_rgb(38, 38, 46);
+        const BORDER: egui::Color32 = egui::Color32::from_rgb(55, 55, 65);
+        const TEXT: egui::Color32 = egui::Color32::from_rgb(230, 230, 235);
+        const TEXT_DIM: egui::Color32 = egui::Color32::from_rgb(140, 140, 155);
+        const SUCCESS: egui::Color32 = egui::Color32::from_rgb(34, 197, 94);
+        const DANGER: egui::Color32 = egui::Color32::from_rgb(239, 68, 68);
+        const WARNING: egui::Color32 = egui::Color32::from_rgb(245, 158, 11);
+        const INFO: egui::Color32 = egui::Color32::from_rgb(59, 130, 246);
+    };
+}
+theme_colors!();
+
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct Uniforms {
@@ -485,6 +509,7 @@ fn build_ui(ctx: &egui::Context, world: &mut World, logo: Option<&egui::TextureH
     apply_theme(ctx);
 
     match world.phase {
+        GamePhase::SplashScreen => build_splash_screen(ctx, logo),
         GamePhase::TitleScreen => build_title_screen(ctx, world, logo, bg_mainmenu),
         GamePhase::PathogenSelect => build_game_type_select(ctx, world, bg_gamemode),
         GamePhase::DifficultySelect => build_pathogen_select(ctx, world),
@@ -504,6 +529,43 @@ fn build_ui(ctx: &egui::Context, world: &mut World, logo: Option<&egui::TextureH
             build_endgame_overlay(ctx, world);
         }
     }
+}
+
+// ─── Splash Screen ───
+fn build_splash_screen(ctx: &egui::Context, logo: Option<&egui::TextureHandle>) {
+    egui::CentralPanel::default()
+        .frame(egui::Frame::new().fill(egui::Color32::from_rgb(7, 7, 7)))
+        .show(ctx, |ui| {
+            let full_rect = ui.max_rect();
+
+            // Center the logo
+            if let Some(tex) = logo {
+                let logo_size = 300.0;
+                let logo_rect = egui::Rect::from_center_size(
+                    full_rect.center(),
+                    egui::vec2(logo_size, logo_size),
+                );
+                ui.painter().image(
+                    tex.id(),
+                    logo_rect,
+                    egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
+                    egui::Color32::WHITE,
+                );
+            }
+
+            // "Loading..." text below logo
+            let loading_y = full_rect.center().y + 180.0;
+            let galley = ui.painter().layout_no_wrap(
+                "Loading...".to_string(),
+                egui::FontId::proportional(16.0),
+                egui::Color32::from_rgb(100, 100, 100),
+            );
+            ui.painter().galley(
+                egui::pos2(full_rect.center().x - galley.size().x * 0.5, loading_y),
+                galley,
+                egui::Color32::from_rgb(100, 100, 100),
+            );
+        });
 }
 
 // ─── Title Screen ───
@@ -1849,6 +1911,7 @@ struct App {
     hovered_region: Option<u16>,
     selected_detail: Option<u16>,
     last_click_time: Instant,
+    splash_start: Option<Instant>,
 }
 
 const BASE_SIM_INTERVAL: u64 = 60;
@@ -1860,7 +1923,7 @@ impl App {
             .expect("Failed to load world.svg");
         let mut world = World::new(&svg_content);
         world.init_disease("Epidemic", epidemic_core::PathogenType::Bacteria);
-        Self { window: None, renderer: None, world, last_sim_tick: Instant::now(), sim_interval_ms: BASE_SIM_INTERVAL, cursor_pos: PhysicalPosition::new(0.0, 0.0), hovered_region: None, selected_detail: None, last_click_time: Instant::now() }
+        Self { window: None, renderer: None, world, last_sim_tick: Instant::now(), sim_interval_ms: BASE_SIM_INTERVAL, cursor_pos: PhysicalPosition::new(0.0, 0.0), hovered_region: None, selected_detail: None, last_click_time: Instant::now(), splash_start: None }
     }
 }
 
@@ -1943,6 +2006,19 @@ impl ApplicationHandler for App {
                 }
             }
             WindowEvent::RedrawRequested => {
+                // Splash screen auto-transition
+                if self.world.phase == GamePhase::SplashScreen {
+                    if self.splash_start.is_none() {
+                        self.splash_start = Some(Instant::now());
+                    }
+                    if let Some(start) = self.splash_start {
+                        let elapsed_ms = start.elapsed().as_millis() as u64;
+                        if elapsed_ms >= crate::theme::splash_duration_ms() {
+                            self.world.phase = GamePhase::TitleScreen;
+                        }
+                    }
+                }
+
                 if self.sim_interval_ms != u64::MAX { self.sim_interval_ms = BASE_SIM_INTERVAL / self.world.game_speed as u64; }
                 if self.world.phase == GamePhase::Playing && self.sim_interval_ms != u64::MAX && self.last_sim_tick.elapsed().as_millis() >= self.sim_interval_ms as u128 {
                     self.world.advance();
@@ -1965,6 +2041,10 @@ impl ApplicationHandler for App {
 }
 
 pub fn run() {
+    // Initialize theme from theme.toml
+    epidemic_core::ThemeConfig::load(); // verify it parses
+    crate::theme::init_theme();
+
     let event_loop = EventLoop::new().unwrap();
     event_loop.set_control_flow(winit::event_loop::ControlFlow::Poll);
     let mut app = App::new();

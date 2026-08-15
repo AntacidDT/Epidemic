@@ -32,6 +32,7 @@ impl GameType {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum GamePhase {
+    SplashScreen,
     TitleScreen,
     PathogenSelect,
     DifficultySelect,
@@ -369,7 +370,7 @@ impl World {
             regions, svg_lookup: lookup, lookup_w, lookup_h,
             tick: 0, game_speed: 1, dna_points: 0,
             total_infected: 0, total_dead: 0, total_healthy: total_pop,
-            news: Vec::new(), phase: GamePhase::TitleScreen, selected_region: None,
+            news: Vec::new(), phase: GamePhase::SplashScreen, selected_region: None,
             disease: Disease::new("Unknown", PathogenType::Bacteria),
             upgrades: all_upgrades(), events: Vec::new(), dna_bubbles: Vec::new(),
             difficulty: Difficulty::Normal, disease_name: "Epidemic".to_string(),
