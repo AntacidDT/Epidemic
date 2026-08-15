@@ -626,16 +626,15 @@ fn build_splash_screen(ctx: &egui::Context, logo: Option<&egui::TextureHandle>) 
 }
 
 // ─── Title Screen ───
+// ─── Title Screen ───
 fn build_title_screen(ctx: &egui::Context, world: &mut World, _logo: Option<&egui::TextureHandle>,
     bg_image: Option<&egui::TextureHandle>) {
 
-    // Colors
-    let text_fill = egui::Color32::from_rgb(255, 87, 87);         // #ff5757 Coral Red
-    let text_outline = egui::Color32::from_rgb(185, 41, 38);      // #b92926
-    let sidebar_color = egui::Color32::from_rgba_premultiplied(255, 255, 255, 115); // White 45% opacity
-    let sidebar_outline = egui::Color32::from_rgb(200, 200, 200); // light gray outline
-    let btn_fill = egui::Color32::from_rgb(255, 87, 87);          // #ff5757
-    let btn_shadow = egui::Color32::from_rgb(0, 0, 0);            // black shadow
+    let text_fill = egui::Color32::from_rgb(255, 87, 87);         // #ff5757
+    let sidebar_color = egui::Color32::from_rgba_premultiplied(255, 255, 255, 115); // 45% white
+    let sidebar_outline = egui::Color32::from_rgb(200, 200, 200);
+    let btn_fill = egui::Color32::from_rgb(255, 87, 87);
+    let btn_shadow = egui::Color32::from_rgb(0, 0, 0);
 
     egui::CentralPanel::default()
         .frame(egui::Frame::new().fill(BLACK))
@@ -644,121 +643,78 @@ fn build_title_screen(ctx: &egui::Context, world: &mut World, _logo: Option<&egu
             let sw = full_rect.width();
             let sh = full_rect.height();
 
-            // Background image
+            // Background
             if let Some(tex) = bg_image {
                 ui.put(full_rect, egui::Image::new(tex).fit_to_exact_size(full_rect.size()));
             }
 
-            // ── Sidebar (1/3 width, 45% transparent white) ──
+            // ── Sidebar (1/3 width, 45% transparent) ──
             let sidebar_w = sw / 3.0;
             let sidebar_rect = egui::Rect::from_min_size(
                 egui::pos2(full_rect.min.x, full_rect.min.y),
                 egui::vec2(sidebar_w, sh),
             );
             ui.painter().rect_filled(sidebar_rect, 0.0, sidebar_color);
-
-            // 3px outline on right edge of sidebar
             ui.painter().line_segment(
                 [egui::pos2(sidebar_rect.right(), sidebar_rect.top()),
                  egui::pos2(sidebar_rect.right(), sidebar_rect.bottom())],
                 egui::Stroke::new(3.0, sidebar_outline),
             );
 
-            // ── Buttons (centered in sidebar) ──
+            // ── Buttons ──
             let btn_width = sidebar_w * 0.65;
-            let btn_height = 42.0;
+            let btn_height = 38.0;
             let btn_x = sidebar_w * 0.5 - btn_width * 0.5;
-            let btn_spacing = sh * 0.10;
 
             let buttons = [
-                ("PLAY", 0.30),
-                ("LOAD", 0.40),
-                ("ENCYCLOPEDIA", 0.50),
-                ("CREDITS", 0.60),
-                ("SETTINGS", 0.70),
+                ("PLAY", 0.30), ("LOAD", 0.40), ("ENCYCLOPEDIA", 0.50),
+                ("CREDITS", 0.60), ("SETTINGS", 0.70),
             ];
 
             for (label, y_frac) in &buttons {
                 let btn_y = sh * y_frac;
                 let is_hovered = ui.rect_contains_pointer(egui::Rect::from_min_size(
-                    egui::pos2(btn_x, btn_y),
-                    egui::vec2(btn_width, btn_height),
+                    egui::pos2(btn_x, btn_y), egui::vec2(btn_width, btn_height),
                 ));
 
-                // Hover animation: shrink on hover
                 let scale = if is_hovered { 0.92 } else { 1.0 };
-                let actual_w = btn_width * scale;
-                let actual_h = btn_height * scale;
-                let actual_x = btn_x + (btn_width - actual_w) * 0.5;
-                let actual_y = btn_y + (btn_height - actual_h) * 0.5;
+                let aw = btn_width * scale;
+                let ah = btn_height * scale;
+                let ax = btn_x + (btn_width - aw) * 0.5;
+                let ay = btn_y + (btn_height - ah) * 0.5;
+                let btn_rect = egui::Rect::from_min_size(egui::pos2(ax, ay), egui::vec2(aw, ah));
 
-                let btn_rect = egui::Rect::from_min_size(
-                    egui::pos2(actual_x, actual_y),
-                    egui::vec2(actual_w, actual_h),
+                ui.painter().rect_filled(
+                    egui::Rect::from_min_size(egui::pos2(ax + 3.0, ay + 3.0), egui::vec2(aw, ah)),
+                    4.0, btn_shadow,
                 );
-
-                // Black echo/shadow on the side
-                let shadow_rect = egui::Rect::from_min_size(
-                    egui::pos2(actual_x + 3.0, actual_y + 3.0),
-                    egui::vec2(actual_w, actual_h),
-                );
-                ui.painter().rect_filled(shadow_rect, 4.0, btn_shadow);
-
-                // Button fill
                 ui.painter().rect_filled(btn_rect, 4.0, btn_fill);
-
-                // Black 2px border on button
                 ui.painter().rect_stroke(btn_rect, 4.0, egui::Stroke::new(2.0, btn_shadow), egui::StrokeKind::Outside);
+                draw_outlined_text_centered(ui, label, btn_rect.center(), 13.0, egui::Color32::BLACK);
 
-                // Button text centered, with outline
-                let text_x = btn_rect.center().x;
-                let text_y = btn_rect.center().y;
-                draw_outlined_text_centered(ui, label, egui::pos2(text_x, text_y), 14.0, egui::Color32::BLACK);
-
-                // Click detection
-                let full_btn_rect = egui::Rect::from_min_size(
-                    egui::pos2(btn_x, btn_y),
-                    egui::vec2(btn_width, btn_height),
-                );
-                let response = ui.allocate_rect(full_btn_rect, egui::Sense::click());
-                if response.clicked() {
-                    match *label {
-                        "PLAY" => { world.phase = GamePhase::PathogenSelect; }
-                        _ => {}
-                    }
+                let full = egui::Rect::from_min_size(egui::pos2(btn_x, btn_y), egui::vec2(btn_width, btn_height));
+                if ui.allocate_rect(full, egui::Sense::click()).clicked() {
+                    if *label == "PLAY" { world.phase = GamePhase::PathogenSelect; }
                 }
             }
 
-            // ── Main Text Content (right side, centered) ──
-            let text_x = sw * 0.65;
+            // ── Right side text ──
+            let cx = sw * 0.65;
+            draw_outlined_text_centered(ui, "EPIDEMIC", egui::pos2(cx, sh * 0.15), 52.0, text_fill);
+            draw_outlined_text_centered(ui, "NATURAL STRATEGIES", egui::pos2(cx, sh * 0.22), 18.0, text_fill);
+            draw_outlined_text_centered(ui, "open source pandemic strategy game", egui::pos2(cx, sh * 0.32), 14.0, text_fill);
+            draw_outlined_text_centered(ui, "thats meant for fun :)", egui::pos2(cx, sh * 0.36), 14.0, text_fill);
 
-            // EPIDEMIC — size 130
-            draw_outlined_text_centered(ui, "EPIDEMIC", egui::pos2(text_x, sh * 0.22), 130.0, text_fill);
-
-            // NATURAL STRATEGIES — size 50.9, right under EPIDEMIC
-            draw_outlined_text_centered(ui, "NATURAL STRATEGIES", egui::pos2(text_x, sh * 0.35), 50.9, text_fill);
-
-            // Tagline — size 33
-            draw_outlined_text_centered(
-                ui,
-                "open source pandemic strategy game thats meant for fun :)",
-                egui::pos2(text_x, sh * 0.48),
-                33.0,
-                text_fill,
-            );
-
-            // Disclaimer — size 22.5, centered
-            let disc_y = sh * 0.82;
-            let disc_lines = [
+            // Disclaimer
+            let disc = [
                 "WARNING:",
                 "This game does not encourage the production of real Biological",
                 "hazards. Its purely simulation and absolutely not meant to be used",
                 "for harmful purposes.",
             ];
-            let line_height = 28.0;
-            for (i, line) in disc_lines.iter().enumerate() {
-                let y = disc_y + i as f32 * line_height;
-                draw_outlined_text_centered(ui, line, egui::pos2(sw * 0.5, y), 22.5, text_fill);
+            let dy = sh * 0.80;
+            for (i, line) in disc.iter().enumerate() {
+                draw_outlined_text_centered(ui, line, egui::pos2(cx, dy + i as f32 * 22.0), 11.0, text_fill);
             }
         });
 }
