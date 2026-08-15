@@ -638,9 +638,12 @@ fn build_title_screen(ctx: &egui::Context, world: &mut World, _logo: Option<&egu
             let sw = full_rect.width();
             let sh = full_rect.height();
 
-            // Background
+            // Background — fill entire window, no gaps
             if let Some(tex) = bg_image {
-                ui.put(full_rect, egui::Image::new(tex).fit_to_exact_size(full_rect.size()));
+                let img = egui::Image::new(tex)
+                    .fit_to_exact_size(full_rect.size())
+                    .uv(egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)));
+                ui.put(full_rect, img);
             }
 
             // ── Belowbrick (sidebar) ──
@@ -727,7 +730,7 @@ fn build_game_type_select(ctx: &egui::Context, world: &mut World,
 
             // Background image
             if let Some(tex) = bg_image {
-                ui.put(full_rect, egui::Image::new(tex).fit_to_exact_size(full_rect.size()));
+                let img = egui::Image::new(tex).fit_to_exact_size(full_rect.size()).uv(egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0))); ui.put(full_rect, img);
             }
 
             // ── A. Header Banner (Y: 0.12–0.23) ──
@@ -869,7 +872,7 @@ fn build_pathogen_select(ctx: &egui::Context, world: &mut World, bg_image: Optio
         // Background image
         if let Some(tex) = bg_image {
             let rect = ui.max_rect();
-            ui.put(rect, egui::Image::new(tex).fit_to_exact_size(rect.size()));
+            let img = egui::Image::new(tex).fit_to_exact_size(rect.size()).uv(egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0))); ui.put(rect, img);
             // Dark overlay for readability
             ui.painter().rect_filled(rect, 0.0, egui::Color32::from_rgba_premultiplied(0, 0, 0, 180));
         }
@@ -977,7 +980,7 @@ fn build_country_select(ctx: &egui::Context, world: &mut World,
 
             // Background image
             if let Some(tex) = bg_image {
-                ui.put(full_rect, egui::Image::new(tex).fit_to_exact_size(full_rect.size()));
+                let img = egui::Image::new(tex).fit_to_exact_size(full_rect.size()).uv(egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0))); ui.put(full_rect, img);
             }
 
             // ── A. Main Header Title ──
@@ -1280,7 +1283,7 @@ fn build_evolution_menu(ctx: &egui::Context, world: &mut World, bg_image: Option
             // Background image - scaled to fit
             if let Some(tex) = bg_image {
                 let avail = ui.available_size();
-                let img = egui::Image::new(tex).fit_to_exact_size(avail);
+                let img = egui::Image::new(tex).fit_to_exact_size(avail).uv(egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)));
                 ui.add(img);
             }
 
