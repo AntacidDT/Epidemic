@@ -710,16 +710,9 @@ fn muted_to_color32(brightness: f32) -> egui::Color32 {
 fn build_game_type_select(ctx: &egui::Context, world: &mut World,
     bg_image: Option<&egui::TextureHandle>) {
 
-    // Color palette
-    let header_text = egui::Color32::from_rgb(128, 24, 24);      // #801818
-    let coral_red = egui::Color32::from_rgb(255, 102, 102);      // #FF6666
-    let coral_outline = egui::Color32::from_rgb(185, 41, 38);    // #b92926
-    let sky_blue = egui::Color32::from_rgb(51, 153, 255);        // #3399FF
-    let blue_outline = egui::Color32::from_rgb(86, 137, 231);    // #5689e7
-    let lavender = egui::Color32::from_rgb(153, 170, 204);       // #99AACC
-    let dark_maroon = egui::Color32::from_rgb(58, 11, 14);       // #3A0B0E
-    let footer_fill = egui::Color32::from_rgb(80, 15, 15);       // dark red
-    let btn_text_dark = egui::Color32::from_rgb(0, 0, 0);        // black
+    // Colors
+    let coral_red = egui::Color32::from_rgb(255, 87, 87);      // #ff5757
+    let vivid_azure = egui::Color32::from_rgb(95, 175, 239);   // #5fafef
 
     egui::CentralPanel::default()
         .frame(egui::Frame::new().fill(BLACK))
@@ -728,141 +721,93 @@ fn build_game_type_select(ctx: &egui::Context, world: &mut World,
             let sw = full_rect.width();
             let sh = full_rect.height();
 
-            // Background image
+            // Background image — full window
             if let Some(tex) = bg_image {
-                let img = egui::Image::new(tex).fit_to_exact_size(full_rect.size()).uv(egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0))); ui.put(full_rect, img);
+                let img = egui::Image::new(tex).fit_to_exact_size(full_rect.size())
+                    .uv(egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)));
+                ui.put(full_rect, img);
             }
 
-            // ── A. Header Banner (Y: 0.12–0.23) ──
-            let header_rect = egui::Rect::from_min_size(
-                egui::pos2(0.0, sh * 0.12),
-                egui::vec2(sw, sh * 0.11),
+            // ── White belowbrick at center (divide height by 4, use 2nd and 3rd) ──
+            // sh/4 = each quarter. 2nd quarter top = sh/4, 3rd quarter bottom = 3*sh/4
+            let brick_y1 = sh * 0.25;
+            let brick_y2 = sh * 0.75;
+            let brick_x1 = sw * 0.05;
+            let brick_x2 = sw * 0.95;
+            let brick_rect = egui::Rect::from_min_max(
+                egui::pos2(brick_x1, brick_y1),
+                egui::pos2(brick_x2, brick_y2),
             );
-            ui.painter().rect_filled(header_rect, 0.0, egui::Color32::from_rgba_premultiplied(20, 20, 30, 180));
+            styles::draw_belowbrick(ui, brick_rect);
 
-            // "CHOOSE WISELY" with outline
-            let header_y = sh * 0.175;
-            let header_x = sw * 0.5;
-            draw_outlined_text(ui, "CHOOSE WISELY", egui::pos2(header_x, header_y), 36.0, header_text);
+            // ── "CHOOSE WISELY" — size 87.2, centered, just above the belowbrick ──
+            let cx = (brick_x1 + brick_x2) * 0.5;
+            let choose_y = brick_y1 - 30.0;
+            draw_outlined_text_centered(ui, "CHOOSE WISELY", egui::pos2(cx, choose_y), 87.2, coral_red);
 
-            // ── B. Mode Card 1: Outbreak (Left) ──
-            let card_w = sw * 0.20;
-            let card_h = sh * 0.33;
-            let card1_x = sw * 0.08;
-            let card1_y = sh * 0.25;
-            let card1_rect = egui::Rect::from_min_size(
-                egui::pos2(card1_x, card1_y),
-                egui::vec2(card_w, card_h),
+            // ── "will you be the one to attack" — size 33.9, coral red, centered ──
+            let attack_y = sh * 0.38;
+            draw_outlined_text_centered(ui, "will you be the one to attack", egui::pos2(cx, attack_y), 33.9, coral_red);
+
+            // ── "or the one to save?" — size 33.9, vivid azure, newline below ──
+            let save_y = attack_y + 45.0;
+            draw_outlined_text_centered(ui, "or the one to save?", egui::pos2(cx, save_y), 33.9, vivid_azure);
+
+            // ── Left: Outbreak belowbrick ──
+            let left_brick_x1 = sw * 0.08;
+            let left_brick_x2 = sw * 0.42;
+            let left_brick_y1 = sh * 0.30;
+            let left_brick_y2 = sh * 0.68;
+            let left_brick = egui::Rect::from_min_max(
+                egui::pos2(left_brick_x1, left_brick_y1),
+                egui::pos2(left_brick_x2, left_brick_y2),
             );
+            // Coral red belowbrick
+            ui.painter().rect_filled(left_brick, 8.0, coral_red);
+            ui.painter().rect_stroke(left_brick, 8.0, egui::Stroke::new(2.0, egui::Color32::from_rgb(185, 41, 38)), egui::StrokeKind::Outside);
 
-            // Drop shadow
-            ui.painter().rect_filled(
-                egui::Rect::from_min_size(
-                    egui::pos2(card1_x + 4.0, card1_y + 4.0),
-                    egui::vec2(card_w, card_h),
-                ),
-                6.0,
-                dark_maroon,
-            );
-            // Card fill
-            ui.painter().rect_filled(card1_rect, 6.0, coral_red);
-            // Card border
-            ui.painter().rect_stroke(card1_rect, 6.0, egui::Stroke::new(3.0, dark_maroon), egui::StrokeKind::Outside);
+            // "Outbreak" — size 65.7, coral red, centered in brick
+            let left_cx = (left_brick_x1 + left_brick_x2) * 0.5;
+            let outbreak_y = (left_brick_y1 + left_brick_y2) * 0.5 - 30.0;
+            draw_outlined_text_centered(ui, "Outbreak", egui::pos2(left_cx, outbreak_y), 65.7, coral_red);
 
-            // Title "Outbreak" centered at (0.18, 0.35)
-            draw_outlined_text(ui, "Outbreak", egui::pos2(sw * 0.18, sh * 0.35), 28.0, coral_red);
+            // "cause a outbreak and wipe out humanity" — size 29.3, coral red
+            let outbreak_desc_y = outbreak_y + 60.0;
+            draw_outlined_text_centered(ui, "cause a outbreak and wipe out humanity", egui::pos2(left_cx, outbreak_desc_y), 29.3, coral_red);
 
-            // Description at (0.18, 0.47)
-            draw_outlined_text(ui, "cause a outbreak and wipe out humanity", egui::pos2(sw * 0.18, sh * 0.47), 12.0, coral_red);
-
-            // Click detection for Outbreak card
-            let response = ui.allocate_rect(card1_rect, egui::Sense::click());
-            if response.clicked() {
+            // Click detection for Outbreak
+            if ui.allocate_rect(left_brick, egui::Sense::click()).clicked() {
                 world.game_type = epidemic_core::GameType::Campaign;
                 world.phase = GamePhase::DifficultySelect;
             }
 
-            // ── C. Mode Card 2: Cure (Right) ──
-            let card2_x = sw * 0.63;
-            let card2_y = sh * 0.25;
-            let card2_rect = egui::Rect::from_min_size(
-                egui::pos2(card2_x, card2_y),
-                egui::vec2(card_w, card_h),
+            // ── Right: Cure belowbrick ──
+            let right_brick_x1 = sw * 0.58;
+            let right_brick_x2 = sw * 0.92;
+            let right_brick_y1 = sh * 0.30;
+            let right_brick_y2 = sh * 0.68;
+            let right_brick = egui::Rect::from_min_max(
+                egui::pos2(right_brick_x1, right_brick_y1),
+                egui::pos2(right_brick_x2, right_brick_y2),
             );
+            // Vivid azure belowbrick
+            ui.painter().rect_filled(right_brick, 8.0, vivid_azure);
+            ui.painter().rect_stroke(right_brick, 8.0, egui::Stroke::new(2.0, egui::Color32::from_rgb(86, 137, 231)), egui::StrokeKind::Outside);
 
-            // Drop shadow
-            ui.painter().rect_filled(
-                egui::Rect::from_min_size(
-                    egui::pos2(card2_x + 4.0, card2_y + 4.0),
-                    egui::vec2(card_w, card_h),
-                ),
-                6.0,
-                dark_maroon,
-            );
-            // Card fill
-            ui.painter().rect_filled(card2_rect, 6.0, lavender);
-            // Card border
-            ui.painter().rect_stroke(card2_rect, 6.0, egui::Stroke::new(3.0, dark_maroon), egui::StrokeKind::Outside);
+            // "Cure" — size 66, vivid azure, centered in brick
+            let right_cx = (right_brick_x1 + right_brick_x2) * 0.5;
+            let cure_y = (right_brick_y1 + right_brick_y2) * 0.5 - 30.0;
+            draw_outlined_text_centered(ui, "Cure", egui::pos2(right_cx, cure_y), 66.0, vivid_azure);
 
-            // Title "Cure" centered at (0.73, 0.35)
-            draw_outlined_text(ui, "Cure", egui::pos2(sw * 0.73, sh * 0.35), 28.0, sky_blue);
+            // "cure the world from a virus and save humanity" — size 29.4, vivid azure
+            let cure_desc_y = cure_y + 60.0;
+            draw_outlined_text_centered(ui, "cure the world from a virus and save humanity", egui::pos2(right_cx, cure_desc_y), 29.4, vivid_azure);
 
-            // Description at (0.73, 0.47)
-            draw_outlined_text(ui, "cure the world from a virus and save humanity", egui::pos2(sw * 0.73, sh * 0.47), 12.0, sky_blue);
-
-            // Click detection for Cure card
-            let response = ui.allocate_rect(card2_rect, egui::Sense::click());
-            if response.clicked() {
-                // TODO: Cure mode
+            // Click detection for Cure
+            if ui.allocate_rect(right_brick, egui::Sense::click()).clicked() {
                 world.game_type = epidemic_core::GameType::FreePlay;
                 world.phase = GamePhase::DifficultySelect;
             }
-
-            // ── D. Central Subtitle (Between Cards) ──
-            let sub_y = sh * 0.42;
-            let sub_x = sw * 0.50;
-
-            // "will you be the one to attack" in coral red
-            let attack_text = "will you be the one to attack";
-            let attack_galley = ui.painter().layout_no_wrap(
-                attack_text.to_string(),
-                egui::FontId::proportional(16.0),
-                coral_red,
-            );
-            let save_text = "or the one to save?";
-            let save_galley = ui.painter().layout_no_wrap(
-                save_text.to_string(),
-                egui::FontId::proportional(16.0),
-                sky_blue,
-            );
-
-            let total_w = attack_galley.size().x + 8.0 + save_galley.size().x;
-            let start_x = sub_x - total_w * 0.5;
-
-            // Draw attack text with outline
-            draw_outlined_text(
-                ui,
-                attack_text,
-                egui::pos2(start_x + attack_galley.size().x * 0.5, sub_y),
-                16.0,
-                coral_red,
-            );
-
-            // Draw save text with outline
-            draw_outlined_text(
-                ui,
-                save_text,
-                egui::pos2(start_x + attack_galley.size().x + 8.0 + save_galley.size().x * 0.5, sub_y),
-                16.0,
-                sky_blue,
-            );
-
-            // ── E. Footer Banner (Y: 0.78–1.0) ──
-            let footer_rect = egui::Rect::from_min_size(
-                egui::pos2(0.0, sh * 0.78),
-                egui::vec2(sw, sh * 0.22),
-            );
-            ui.painter().rect_filled(footer_rect, 0.0, footer_fill);
         });
 }
 
