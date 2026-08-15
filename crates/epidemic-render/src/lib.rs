@@ -505,14 +505,14 @@ fn build_ui(ctx: &egui::Context, world: &mut World, logo: Option<&egui::TextureH
     bg_mainmenu: Option<&egui::TextureHandle>, bg_gamemode: Option<&egui::TextureHandle>,
     bg_evolve: Option<&egui::TextureHandle>, bg_world: Option<&egui::TextureHandle>) {
 
-    // Apply warm theme
     apply_theme(ctx);
 
+    // Always draw a background image on menu screens
     match world.phase {
         GamePhase::SplashScreen => build_splash_screen(ctx, logo),
         GamePhase::TitleScreen => build_title_screen(ctx, world, logo, bg_mainmenu),
         GamePhase::PathogenSelect => build_game_type_select(ctx, world, bg_gamemode),
-        GamePhase::DifficultySelect => build_pathogen_select(ctx, world),
+        GamePhase::DifficultySelect => build_pathogen_select(ctx, world, bg_gamemode), // reuse gamemode bg
         GamePhase::SelectOrigin => {
             build_country_select(ctx, world, bg_world, hovered_region);
         }
@@ -526,7 +526,7 @@ fn build_ui(ctx: &egui::Context, world: &mut World, logo: Option<&egui::TextureH
         }
         GamePhase::Won | GamePhase::Lost => {
             build_gameplay_hud(ctx, world, hovered_region);
-            build_endgame_overlay(ctx, world);
+            build_endgame_overlay(ctx, world, bg_mainmenu);
         }
     }
 }
@@ -976,8 +976,16 @@ fn draw_outlined_text(
 }
 
 // ─── Pathogen Select ───
-fn build_pathogen_select(ctx: &egui::Context, world: &mut World) {
+fn build_pathogen_select(ctx: &egui::Context, world: &mut World, bg_image: Option<&egui::TextureHandle>) {
     egui::CentralPanel::default().frame(egui::Frame::new().fill(BG_DARK).inner_margin(egui::Margin::same(40))).show(ctx, |ui| {
+        // Background image
+        if let Some(tex) = bg_image {
+            let rect = ui.max_rect();
+            ui.put(rect, egui::Image::new(tex).fit_to_exact_size(rect.size()));
+            // Dark overlay for readability
+            ui.painter().rect_filled(rect, 0.0, egui::Color32::from_rgba_premultiplied(0, 0, 0, 180));
+        }
+
         ui.vertical_centered(|ui| {
             ui.label(egui::RichText::new("SELECT PATHOGEN").size(28.0).strong().color(WHITE));
             ui.add_space(8.0);
@@ -1752,7 +1760,7 @@ fn build_country_detail(ctx: &egui::Context, world: &mut World) {
 }
 
 // ─── Endgame Overlay ───
-fn build_endgame_overlay(ctx: &egui::Context, world: &mut World) {
+fn build_endgame_overlay(ctx: &egui::Context, world: &mut World, bg_image: Option<&egui::TextureHandle>) {
     let score = epidemic_core::calculate_score(world);
     let is_win = world.phase == GamePhase::Won;
 
