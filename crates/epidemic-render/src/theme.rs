@@ -115,33 +115,72 @@ pub fn gradient_rect_vertical(
 
 fn lerp(a: f32, b: f32, t: f32) -> f32 { a + (b - a) * t }
 
-// ─── Text with outline ───
+// ─── Outlined text helpers ───
+
+/// Draw text with a dark outline (4-directional shadow)
+pub fn outlined_label(ui: &mut egui::Ui, text: &str, size: f32, fill: egui::Color32) {
+    let outline = egui::Color32::from_rgb(0, 0, 0);
+    let font = egui::FontId::proportional(size);
+    let galley = ui.painter().layout_no_wrap(text.to_string(), font.clone(), fill);
+    let pos = ui.cursor().min;
+    let rect = egui::Rect::from_min_size(pos, galley.size() + egui::vec2(4.0, 2.0));
+
+    // Outline (4 directions)
+    for (ox, oy) in [(-1.0, 0.0), (1.0, 0.0), (0.0, -1.0), (0.0, 1.0)] {
+        let g = ui.painter().layout_no_wrap(text.to_string(), font.clone(), outline);
+        ui.painter().galley(egui::pos2(pos.x + ox, pos.y + oy), g, outline);
+    }
+    // Fill
+    ui.painter().galley(pos, galley, fill);
+    ui.advance_cursor_after_rect(rect);
+}
+
+/// Draw centered outlined text at a specific position
+pub fn draw_outlined_text_centered(
+    ui: &mut egui::Ui,
+    text: &str,
+    center: egui::Pos2,
+    size: f32,
+    fill: egui::Color32,
+) {
+    let outline = egui::Color32::from_rgb(0, 0, 0);
+    let font = egui::FontId::proportional(size);
+
+    // Draw outline in 4 directions
+    for (ox, oy) in [(-1.0, 0.0), (1.0, 0.0), (0.0, -1.0), (0.0, 1.0)] {
+        let galley = ui.painter().layout_no_wrap(text.to_string(), font.clone(), outline);
+        ui.painter().galley(
+            egui::pos2(center.x - galley.size().x * 0.5 + ox, center.y - galley.size().y * 0.5 + oy),
+            galley,
+            outline,
+        );
+    }
+    // Draw fill
+    let galley = ui.painter().layout_no_wrap(text.to_string(), font, fill);
+    ui.painter().galley(
+        egui::pos2(center.x - galley.size().x * 0.5, center.y - galley.size().y * 0.5),
+        galley,
+        fill,
+    );
+}
+
+/// Draw left-aligned outlined text at a position
 pub fn draw_outlined_text(
     ui: &mut egui::Ui,
     text: &str,
-    center_pos: egui::Pos2,
-    font_id: egui::FontId,
-    fill_color: Color32,
-    outline_color: Color32,
-    centered: bool,
+    pos: egui::Pos2,
+    size: f32,
+    fill: egui::Color32,
 ) {
-    let offsets = [(-1.0, 0.0), (1.0, 0.0), (0.0, -1.0), (0.0, 1.0)];
-    for (ox, oy) in offsets {
-        let galley = ui.painter().layout_no_wrap(text.to_string(), font_id.clone(), outline_color);
-        let pos = if centered {
-            egui::pos2(center_pos.x - galley.size().x * 0.5 + ox, center_pos.y - galley.size().y * 0.5 + oy)
-        } else {
-            egui::pos2(center_pos.x + ox, center_pos.y + oy)
-        };
-        ui.painter().galley(pos, galley, outline_color);
+    let outline = egui::Color32::from_rgb(0, 0, 0);
+    let font = egui::FontId::proportional(size);
+
+    for (ox, oy) in [(-1.0, 0.0), (1.0, 0.0), (0.0, -1.0), (0.0, 1.0)] {
+        let galley = ui.painter().layout_no_wrap(text.to_string(), font.clone(), outline);
+        ui.painter().galley(egui::pos2(pos.x + ox, pos.y + oy), galley, outline);
     }
-    let galley = ui.painter().layout_no_wrap(text.to_string(), font_id, fill_color);
-    let pos = if centered {
-        egui::pos2(center_pos.x - galley.size().x * 0.5, center_pos.y - galley.size().y * 0.5)
-    } else {
-        center_pos
-    };
-    ui.painter().galley(pos, galley, fill_color);
+    let galley = ui.painter().layout_no_wrap(text.to_string(), font, fill);
+    ui.painter().galley(pos, galley, fill);
 }
 
 // ─── Number formatting ───

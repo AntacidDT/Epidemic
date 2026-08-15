@@ -663,43 +663,22 @@ fn build_title_screen(ctx: &egui::Context, world: &mut World, _logo: Option<&egu
 
             // ── B. Main Text Content Area (X: 0.28–1.0) ──
 
-            // Main Title: EPIDEMIC at (0.64, 0.25)
+            // Main Title: EPIDEMIC at (0.64, 0.25) — outlined
             let title_x = sw * 0.64;
             let title_y = sh * 0.25;
-            let title_galley = ui.painter().layout_no_wrap(
-                "EPIDEMIC".to_string(),
-                egui::FontId::proportional(64.0),
-                title_color,
-            );
-            ui.painter().galley(
-                egui::pos2(title_x - title_galley.size().x * 0.5, title_y),
-                title_galley,
-                title_color,
-            );
+            draw_outlined_text_centered(ui, "EPIDEMIC", egui::pos2(title_x, title_y), 64.0, title_color);
 
-            // Subtitle: NATURAL STRATEGIES at (0.64, 0.35)
+            // Subtitle: NATURAL STRATEGIES at (0.64, 0.35) — outlined
             let sub_y = sh * 0.35;
-            let sub_galley = ui.painter().layout_no_wrap(
-                "NATURAL STRATEGIES".to_string(),
-                egui::FontId::proportional(24.0),
-                title_color,
-            );
-            ui.painter().galley(
-                egui::pos2(title_x - sub_galley.size().x * 0.5, sub_y),
-                sub_galley,
-                title_color,
-            );
+            draw_outlined_text_centered(ui, "NATURAL STRATEGIES", egui::pos2(title_x, sub_y), 24.0, title_color);
 
-            // Tagline at (0.64, 0.48)
+            // Tagline at (0.64, 0.48) — outlined
             let tag_y = sh * 0.48;
-            let tag_galley = ui.painter().layout_no_wrap(
-                "open source pandemic strategy game thats meant for fun :)".to_string(),
-                egui::FontId::proportional(14.0),
-                body_text,
-            );
-            ui.painter().galley(
-                egui::pos2(title_x - tag_galley.size().x * 0.5, tag_y),
-                tag_galley,
+            draw_outlined_text_centered(
+                ui,
+                "open source pandemic strategy game thats meant for fun :)",
+                egui::pos2(title_x, tag_y),
+                14.0,
                 body_text,
             );
 
@@ -714,16 +693,7 @@ fn build_title_screen(ctx: &egui::Context, world: &mut World, _logo: Option<&egu
             let line_height = 16.0;
             for (i, line) in disc_lines.iter().enumerate() {
                 let y = disc_y + i as f32 * line_height;
-                let galley = ui.painter().layout_no_wrap(
-                    line.to_string(),
-                    egui::FontId::proportional(11.0),
-                    muted_to_color32(0.7), // muted
-                );
-                ui.painter().galley(
-                    egui::pos2(title_x - galley.size().x * 0.5, y),
-                    galley,
-                    muted_to_color32(0.7),
-                );
+                draw_outlined_text(ui, line, egui::pos2(title_x, y), 11.0, muted_to_color32(0.7));
             }
         });
 }
@@ -770,15 +740,7 @@ fn build_game_type_select(ctx: &egui::Context, world: &mut World,
             // "CHOOSE WISELY" with outline
             let header_y = sh * 0.175;
             let header_x = sw * 0.5;
-            draw_outlined_text(
-                ui,
-                "CHOOSE WISELY",
-                egui::pos2(header_x, header_y),
-                egui::FontId::proportional(36.0),
-                header_text,
-                dark_maroon,
-                true, // centered
-            );
+            draw_outlined_text(ui, "CHOOSE WISELY", egui::pos2(header_x, header_y), 36.0, header_text);
 
             // ── B. Mode Card 1: Outbreak (Left) ──
             let card_w = sw * 0.20;
@@ -805,26 +767,10 @@ fn build_game_type_select(ctx: &egui::Context, world: &mut World,
             ui.painter().rect_stroke(card1_rect, 6.0, egui::Stroke::new(3.0, dark_maroon), egui::StrokeKind::Outside);
 
             // Title "Outbreak" centered at (0.18, 0.35)
-            draw_outlined_text(
-                ui,
-                "Outbreak",
-                egui::pos2(sw * 0.18, sh * 0.35),
-                egui::FontId::proportional(28.0),
-                coral_red,
-                dark_maroon,
-                true,
-            );
+            draw_outlined_text(ui, "Outbreak", egui::pos2(sw * 0.18, sh * 0.35), 28.0, coral_red);
 
             // Description at (0.18, 0.47)
-            draw_outlined_text(
-                ui,
-                "cause a outbreak and wipe out humanity",
-                egui::pos2(sw * 0.18, sh * 0.47),
-                egui::FontId::proportional(12.0),
-                coral_red,
-                dark_maroon,
-                true,
-            );
+            draw_outlined_text(ui, "cause a outbreak and wipe out humanity", egui::pos2(sw * 0.18, sh * 0.47), 12.0, coral_red);
 
             // Click detection for Outbreak card
             let response = ui.allocate_rect(card1_rect, egui::Sense::click());
@@ -856,26 +802,10 @@ fn build_game_type_select(ctx: &egui::Context, world: &mut World,
             ui.painter().rect_stroke(card2_rect, 6.0, egui::Stroke::new(3.0, dark_maroon), egui::StrokeKind::Outside);
 
             // Title "Cure" centered at (0.73, 0.35)
-            draw_outlined_text(
-                ui,
-                "Cure",
-                egui::pos2(sw * 0.73, sh * 0.35),
-                egui::FontId::proportional(28.0),
-                sky_blue,
-                blue_outline,
-                true,
-            );
+            draw_outlined_text(ui, "Cure", egui::pos2(sw * 0.73, sh * 0.35), 28.0, sky_blue);
 
             // Description at (0.73, 0.47)
-            draw_outlined_text(
-                ui,
-                "cure the world from a virus and save humanity",
-                egui::pos2(sw * 0.73, sh * 0.47),
-                egui::FontId::proportional(12.0),
-                sky_blue,
-                blue_outline,
-                true,
-            );
+            draw_outlined_text(ui, "cure the world from a virus and save humanity", egui::pos2(sw * 0.73, sh * 0.47), 12.0, sky_blue);
 
             // Click detection for Cure card
             let response = ui.allocate_rect(card2_rect, egui::Sense::click());
@@ -911,10 +841,8 @@ fn build_game_type_select(ctx: &egui::Context, world: &mut World,
                 ui,
                 attack_text,
                 egui::pos2(start_x + attack_galley.size().x * 0.5, sub_y),
-                egui::FontId::proportional(16.0),
+                16.0,
                 coral_red,
-                dark_maroon,
-                true,
             );
 
             // Draw save text with outline
@@ -922,10 +850,8 @@ fn build_game_type_select(ctx: &egui::Context, world: &mut World,
                 ui,
                 save_text,
                 egui::pos2(start_x + attack_galley.size().x + 8.0 + save_galley.size().x * 0.5, sub_y),
-                egui::FontId::proportional(16.0),
+                16.0,
                 sky_blue,
-                blue_outline,
-                true,
             );
 
             // ── E. Footer Banner (Y: 0.78–1.0) ──
@@ -937,45 +863,7 @@ fn build_game_type_select(ctx: &egui::Context, world: &mut World,
         });
 }
 
-/// Draw text with outline/shadow effect
-fn draw_outlined_text(
-    ui: &mut egui::Ui,
-    text: &str,
-    center_pos: egui::Pos2,
-    font_id: egui::FontId,
-    fill_color: egui::Color32,
-    outline_color: egui::Color32,
-    centered: bool,
-) {
-    // Draw outline (4 directions)
-    let offsets = [(-1.0, 0.0), (1.0, 0.0), (0.0, -1.0), (0.0, 1.0)];
-    for (ox, oy) in offsets {
-        let galley = ui.painter().layout_no_wrap(text.to_string(), font_id.clone(), outline_color);
-        let pos = if centered {
-            egui::pos2(
-                center_pos.x - galley.size().x * 0.5 + ox,
-                center_pos.y - galley.size().y * 0.5 + oy,
-            )
-        } else {
-            egui::pos2(center_pos.x + ox, center_pos.y + oy)
-        };
-        ui.painter().galley(pos, galley, outline_color);
-    }
-
-    // Draw fill
-    let galley = ui.painter().layout_no_wrap(text.to_string(), font_id, fill_color);
-    let pos = if centered {
-        egui::pos2(
-            center_pos.x - galley.size().x * 0.5,
-            center_pos.y - galley.size().y * 0.5,
-        )
-    } else {
-        center_pos
-    };
-    ui.painter().galley(pos, galley, fill_color);
-}
-
-// ─── Pathogen Select ───
+// ─── Game Mode Select (continued) ───// ─── Pathogen Select ───
 fn build_pathogen_select(ctx: &egui::Context, world: &mut World, bg_image: Option<&egui::TextureHandle>) {
     egui::CentralPanel::default().frame(egui::Frame::new().fill(BG_DARK).inner_margin(egui::Margin::same(40))).show(ctx, |ui| {
         // Background image
@@ -1098,25 +986,9 @@ fn build_country_select(ctx: &egui::Context, world: &mut World,
             let line1_y = sh * 0.08;
             let line2_y = sh * 0.15;
 
-            draw_outlined_text(
-                ui,
-                "What country would you dare",
-                egui::pos2(header_x, line1_y),
-                egui::FontId::proportional(32.0),
-                header_fill,
-                header_outline,
-                true,
-            );
+            draw_outlined_text(ui, "What country would you dare", egui::pos2(header_x, line1_y), 32.0, header_fill);
 
-            draw_outlined_text(
-                ui,
-                "to begin?",
-                egui::pos2(header_x, line2_y),
-                egui::FontId::proportional(32.0),
-                header_fill,
-                header_outline,
-                true,
-            );
+            draw_outlined_text(ui, "to begin?", egui::pos2(header_x, line2_y), 32.0, header_fill);
 
             // ── B. Interactive World Map Container ──
             let map_x = sw * 0.14;
@@ -1151,15 +1023,7 @@ fn build_country_select(ctx: &egui::Context, world: &mut World,
             let tip_y = sh * 0.90;
 
             // "Potentially pro tip:"
-            draw_outlined_text(
-                ui,
-                "Potentially pro tip:",
-                egui::pos2(tip_x, tip_y),
-                egui::FontId::proportional(14.0),
-                tip_title,
-                header_outline,
-                true,
-            );
+            draw_outlined_text(ui, "Potentially pro tip:", egui::pos2(tip_x, tip_y), 14.0, tip_title);
 
             // Body text
             let body_y = sh * 0.94;
@@ -1882,14 +1746,25 @@ fn card(ui: &mut egui::Ui, fill: egui::Color32, radius: f32, add_contents: impl 
 }
 
 fn label_sm(ui: &mut egui::Ui, text: &str, color: egui::Color32) {
-    ui.label(egui::RichText::new(text).size(10.0).strong().color(color));
+    // Outlined small label
+    let pos = ui.cursor().min;
+    draw_outlined_text(ui, text, pos, 10.0, color);
+    let galley = ui.painter().layout_no_wrap(text.to_string(), egui::FontId::proportional(10.0), color);
+    ui.advance_cursor_after_rect(egui::Rect::from_min_size(pos, galley.size() + egui::vec2(4.0, 2.0)));
 }
 
 fn row(ui: &mut egui::Ui, label: &str, value: &str, color: egui::Color32) {
+    // Outlined row
     ui.horizontal(|ui| {
-        ui.label(egui::RichText::new(label).size(12.0).color(egui::Color32::from_rgb(140, 140, 155)));
+        let pos = ui.cursor().min;
+        draw_outlined_text(ui, label, pos, 12.0, egui::Color32::from_rgb(140, 140, 155));
+        let galley = ui.painter().layout_no_wrap(label.to_string(), egui::FontId::proportional(12.0), egui::Color32::from_rgb(140, 140, 155));
+        ui.advance_cursor_after_rect(egui::Rect::from_min_size(pos, galley.size()));
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            ui.label(egui::RichText::new(value).size(12.0).strong().color(color));
+            let pos = ui.cursor().min;
+            draw_outlined_text(ui, value, pos, 12.0, color);
+            let galley = ui.painter().layout_no_wrap(value.to_string(), egui::FontId::proportional(12.0), color);
+            ui.advance_cursor_after_rect(egui::Rect::from_min_size(pos, galley.size()));
         });
     });
 }
