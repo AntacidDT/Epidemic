@@ -674,7 +674,9 @@ fn build_title_screen(ctx: &egui::Context, world: &mut World, _logo: Option<&egu
             }
 
             // ── Title + Subtitle (design system) ──
-            let cx = sw * 0.65;
+            // Right side content area: from sidebar_w to sw
+            // Center = sidebar_w + (sw - sidebar_w) / 2 = (sidebar_w + sw) / 2
+            let cx = (sidebar_w + sw) * 0.5;
             styles::draw_title(ui, egui::pos2(cx, sh * 0.15), "EPIDEMIC");
             styles::draw_subtitle(ui, egui::pos2(cx, sh * 0.28), "NATURAL STRATEGIES");
 
