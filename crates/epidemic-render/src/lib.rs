@@ -334,7 +334,7 @@ impl Renderer {
         resp.consumed
     }
 
-    pub fn render(&mut self, world: &mut World, window: &Window, hovered_region: Option<u16>) -> Result<(), SurfaceError> {
+    pub fn render(&mut self, world: &mut World, window: &Window, hovered_region: Option<u16>, show_grid: bool) -> Result<(), SurfaceError> {
         let elapsed = self.start_time.elapsed().as_secs_f32();
 
         // Load logo on first frame
@@ -423,7 +423,7 @@ impl Renderer {
         let bg_gm = self.bg_gamemode.clone();
         let bg_ev = self.bg_evolve.clone();
         let bg_wm = self.bg_world.clone();
-        let full_output = self.egui_ctx.run(raw_input, |ctx| { build_ui(ctx, world, logo.as_ref(), hovered, bg_mm.as_ref(), bg_gm.as_ref(), bg_ev.as_ref(), bg_wm.as_ref()); });
+        let full_output = self.egui_ctx.run(raw_input, |ctx| { build_ui(ctx, world, logo.as_ref(), hovered, bg_mm.as_ref(), bg_gm.as_ref(), bg_ev.as_ref(), bg_wm.as_ref(), show_grid); });
         self.egui_state.handle_platform_output(window, full_output.platform_output);
         let paint_jobs = self.egui_ctx.tessellate(full_output.shapes, full_output.pixels_per_point);
         for (id, delta) in &full_output.textures_delta.set { self.egui_renderer.update_texture(&self.device, &self.queue, *id, delta); }
@@ -503,11 +503,68 @@ fn load_asset_image(name: &str) -> Result<image::RgbaImage, Box<dyn std::error::
 
 fn build_ui(ctx: &egui::Context, world: &mut World, logo: Option<&egui::TextureHandle>, hovered_region: Option<u16>,
     bg_mainmenu: Option<&egui::TextureHandle>, bg_gamemode: Option<&egui::TextureHandle>,
-    bg_evolve: Option<&egui::TextureHandle>, bg_world: Option<&egui::TextureHandle>) {
+    bg_evolve: Option<&egui::TextureHandle>, bg_world: Option<&egui::TextureHandle>, show_grid: bool) {
 
     apply_theme(ctx);
 
-    // Always draw a background image on menu screens
+    // Debug grid overlay
+    if show_grid {
+        egui::CentralPanel::default()
+            .frame(egui::Frame::new().fill(egui::Color32::TRANSPARENT))
+            .show(ctx, |ui| {
+                let rect = ui.max_rect();
+                let sw = rect.width();
+                let sh = rect.height();
+                let cols = 80;
+                let rows = 80;
+                let cell_w = sw / cols as f32;
+                let cell_h = sh / rows as f32;
+                let painter = ui.painter();
+
+                // Draw grid lines
+                for i in 0..=cols {
+                    let x = rect.left() + i as f32 * cell_w;
+                    let alpha = if i % 10 == 0 { 80 } else { 30 };
+                    let color = egui::Color32::from_rgba_premultiplied(255, 255, 255, alpha);
+                    painter.line_segment(
+                        [egui::pos2(x, rect.top()), egui::pos2(x, rect.bottom())],
+                        egui::Stroke::new(1.0, color),
+                    );
+                }
+                for i in 0..=rows {
+                    let y = rect.top() + i as f32 * cell_h;
+                    let alpha = if i % 10 == 0 { 80 } else { 30 };
+                    let color = egui::Color32::from_rgba_premultiplied(255, 255, 255, alpha);
+                    painter.line_segment(
+                        [egui::pos2(rect.left(), y), egui::pos2(rect.right(), y)],
+                        egui::Stroke::new(1.0, color),
+                    );
+                }
+
+                // Draw coordinate labels at every 10th line
+                for i in (0..=cols).step_by(10) {
+                    let x = rect.left() + i as f32 * cell_w;
+                    let label = format!("{}", i);
+                    let galley = painter.layout_no_wrap(
+                        label,
+                        egui::FontId::proportional(9.0),
+                        egui::Color32::from_rgba_premultiplied(255, 200, 200, 160),
+                    );
+                    painter.galley(egui::pos2(x + 2.0, rect.top() + 2.0), galley, egui::Color32::from_rgba_premultiplied(255, 200, 200, 160));
+                }
+                for i in (0..=rows).step_by(10) {
+                    let y = rect.top() + i as f32 * cell_h;
+                    let label = format!("{}", i);
+                    let galley = painter.layout_no_wrap(
+                        label,
+                        egui::FontId::proportional(9.0),
+                        egui::Color32::from_rgba_premultiplied(200, 255, 200, 160),
+                    );
+                    painter.galley(egui::pos2(rect.left() + 2.0, y + 2.0), galley, egui::Color32::from_rgba_premultiplied(200, 255, 200, 160));
+                }
+            });
+    }
+
     match world.phase {
         GamePhase::SplashScreen => build_splash_screen(ctx, logo),
         GamePhase::TitleScreen => build_title_screen(ctx, world, logo, bg_mainmenu),
@@ -1795,6 +1852,7 @@ struct App {
     selected_detail: Option<u16>,
     last_click_time: Instant,
     splash_start: Option<Instant>,
+    show_grid: bool,
 }
 
 const BASE_SIM_INTERVAL: u64 = 60;
@@ -1806,7 +1864,7 @@ impl App {
             .expect("Failed to load world.svg");
         let mut world = World::new(&svg_content);
         world.init_disease("Epidemic", epidemic_core::PathogenType::Bacteria);
-        Self { window: None, renderer: None, world, last_sim_tick: Instant::now(), sim_interval_ms: BASE_SIM_INTERVAL, cursor_pos: PhysicalPosition::new(0.0, 0.0), hovered_region: None, selected_detail: None, last_click_time: Instant::now(), splash_start: None }
+        Self { window: None, renderer: None, world, last_sim_tick: Instant::now(), sim_interval_ms: BASE_SIM_INTERVAL, cursor_pos: PhysicalPosition::new(0.0, 0.0), hovered_region: None, selected_detail: None, last_click_time: Instant::now(), splash_start: None, show_grid: true }
     }
 }
 
@@ -1885,6 +1943,9 @@ impl ApplicationHandler for App {
                             self.world.selected_upgrade = None;
                         }
                     }
+                    winit::keyboard::KeyCode::KeyG => {
+                        self.show_grid = !self.show_grid;
+                    }
                     _ => {}
                 }
             }
@@ -1909,7 +1970,7 @@ impl ApplicationHandler for App {
                     while self.world.news.len() > 5 { self.world.news.remove(0); }
                 }
                 if let (Some(r), Some(w)) = (self.renderer.as_mut(), self.window.as_ref()) {
-                    match r.render(&mut self.world, w, self.hovered_region) {
+                    match r.render(&mut self.world, w, self.hovered_region, self.show_grid) {
                         Ok(_) => {}
                         Err(SurfaceError::Lost) => r.resize(r.size),
                         Err(SurfaceError::OutOfMemory) => event_loop.exit(),
