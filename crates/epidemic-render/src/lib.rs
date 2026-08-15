@@ -638,15 +638,15 @@ fn build_title_screen(ctx: &egui::Context, world: &mut World, _logo: Option<&egu
             let sw = full_rect.width();
             let sh = full_rect.height();
 
-            // Background — fill entire window, no gaps
             if let Some(tex) = bg_image {
-                let img = egui::Image::new(tex)
-                    .fit_to_exact_size(full_rect.size())
+                let img = egui::Image::new(tex).fit_to_exact_size(full_rect.size())
                     .uv(egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)));
                 ui.put(full_rect, img);
             }
 
-            // ── Belowbrick (sidebar) ──
+            let scale = sh / 1300.0;
+
+            // Sidebar
             let sidebar_w = sw / 3.0;
             let sidebar_rect = egui::Rect::from_min_size(
                 egui::pos2(full_rect.min.x, full_rect.min.y),
@@ -654,40 +654,31 @@ fn build_title_screen(ctx: &egui::Context, world: &mut World, _logo: Option<&egu
             );
             styles::draw_belowbrick(ui, sidebar_rect);
 
-            // ── Text Buttons ──
+            // Buttons
             let btn_width = sidebar_w * 0.65;
-            let btn_height = 38.0;
+            let btn_height = 38.0 * scale;
             let btn_x = sidebar_w * 0.5 - btn_width * 0.5;
-
             let buttons = [
                 ("PLAY", 0.30), ("LOAD", 0.40), ("ENCYCLOPEDIA", 0.50),
                 ("CREDITS", 0.60), ("SETTINGS", 0.70),
             ];
-
             for (label, y_frac) in &buttons {
                 let btn_y = sh * y_frac;
-                let btn_rect = egui::Rect::from_min_size(
-                    egui::pos2(btn_x, btn_y),
-                    egui::vec2(btn_width, btn_height),
-                );
+                let btn_rect = egui::Rect::from_min_size(egui::pos2(btn_x, btn_y), egui::vec2(btn_width, btn_height));
                 let is_hovered = ui.rect_contains_pointer(btn_rect);
                 if styles::draw_text_button(ui, btn_rect, label, is_hovered) {
                     if *label == "PLAY" { world.phase = GamePhase::PathogenSelect; }
                 }
             }
 
-            // ── Title + Subtitle (design system) ──
-            // Right side content area: from sidebar_w to sw
-            // Center = sidebar_w + (sw - sidebar_w) / 2 = (sidebar_w + sw) / 2
+            // Text
             let cx = (sidebar_w + sw) * 0.5;
             styles::draw_title(ui, egui::pos2(cx, sh * 0.15), "EPIDEMIC");
             styles::draw_subtitle(ui, egui::pos2(cx, sh * 0.28), "NATURAL STRATEGIES");
+            styles::draw_text(ui, egui::pos2(cx, sh * 0.38), "open source pandemic strategy game", 33.0 * scale);
+            styles::draw_text(ui, egui::pos2(cx, sh * 0.44), "thats meant for fun :)", 33.0 * scale);
 
-            // ── Text (tagline) ──
-            styles::draw_text(ui, egui::pos2(cx, sh * 0.38), "open source pandemic strategy game", 33.0);
-            styles::draw_text(ui, egui::pos2(cx, sh * 0.44), "thats meant for fun :)", 33.0);
-
-            // ── Disclaimer (text module) ──
+            // Disclaimer
             let disc = [
                 "WARNING:",
                 "This game does not encourage the production of real Biological",
@@ -696,7 +687,7 @@ fn build_title_screen(ctx: &egui::Context, world: &mut World, _logo: Option<&egu
             ];
             let dy = sh * 0.80;
             for (i, line) in disc.iter().enumerate() {
-                styles::draw_text(ui, egui::pos2(cx, dy + i as f32 * 28.0), line, 22.5);
+                styles::draw_text(ui, egui::pos2(cx, dy + i as f32 * 22.0 * scale), line, 22.5 * scale);
             }
         });
 }
@@ -710,9 +701,8 @@ fn muted_to_color32(brightness: f32) -> egui::Color32 {
 fn build_game_type_select(ctx: &egui::Context, world: &mut World,
     bg_image: Option<&egui::TextureHandle>) {
 
-    // Colors
-    let coral_red = egui::Color32::from_rgb(255, 87, 87);      // #ff5757
-    let vivid_azure = egui::Color32::from_rgb(95, 175, 239);   // #5fafef
+    let coral_red = egui::Color32::from_rgb(255, 87, 87);
+    let vivid_azure = egui::Color32::from_rgb(95, 175, 239);
 
     egui::CentralPanel::default()
         .frame(egui::Frame::new().fill(BLACK))
@@ -721,90 +711,71 @@ fn build_game_type_select(ctx: &egui::Context, world: &mut World,
             let sw = full_rect.width();
             let sh = full_rect.height();
 
-            // Background image — full window
+            // Background
             if let Some(tex) = bg_image {
                 let img = egui::Image::new(tex).fit_to_exact_size(full_rect.size())
                     .uv(egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)));
                 ui.put(full_rect, img);
             }
 
-            // ── White belowbrick at center (divide height by 4, use 2nd and 3rd) ──
-            // sh/4 = each quarter. 2nd quarter top = sh/4, 3rd quarter bottom = 3*sh/4
-            let brick_y1 = sh * 0.25;
-            let brick_y2 = sh * 0.75;
-            let brick_x1 = sw * 0.05;
-            let brick_x2 = sw * 0.95;
-            let brick_rect = egui::Rect::from_min_max(
-                egui::pos2(brick_x1, brick_y1),
-                egui::pos2(brick_x2, brick_y2),
+            // Scale factor: Canva uses ~96 DPI, egui uses physical pixels
+            // On 720p, scale down by ~0.55 to match Canva proportions
+            let scale = sh / 1300.0; // reference height
+
+            // ── White belowbrick at center ──
+            let brick = egui::Rect::from_min_max(
+                egui::pos2(sw * 0.05, sh * 0.25),
+                egui::pos2(sw * 0.95, sh * 0.75),
             );
-            styles::draw_belowbrick(ui, brick_rect);
+            styles::draw_belowbrick(ui, brick);
 
-            // ── "CHOOSE WISELY" — size 87.2, centered, just above the belowbrick ──
-            let cx = (brick_x1 + brick_x2) * 0.5;
-            let choose_y = brick_y1 - 30.0;
-            draw_outlined_text_centered(ui, "CHOOSE WISELY", egui::pos2(cx, choose_y), 87.2, coral_red);
+            let cx = sw * 0.5;
 
-            // ── "will you be the one to attack" — size 33.9, coral red, centered ──
-            let attack_y = sh * 0.38;
-            draw_outlined_text_centered(ui, "will you be the one to attack", egui::pos2(cx, attack_y), 33.9, coral_red);
+            // ── CHOOSE WISELY — just above brick ──
+            let choose_size = 48.0 * scale;
+            let choose_y = sh * 0.25 - 20.0 * scale;
+            draw_outlined_text_centered(ui, "CHOOSE WISELY", egui::pos2(cx, choose_y), choose_size, coral_red);
 
-            // ── "or the one to save?" — size 33.9, vivid azure, newline below ──
-            let save_y = attack_y + 45.0;
-            draw_outlined_text_centered(ui, "or the one to save?", egui::pos2(cx, save_y), 33.9, vivid_azure);
+            // ── Tagline — centered in brick ──
+            let tag_size = 20.0 * scale;
+            let tag_y = sh * 0.40;
+            draw_outlined_text_centered(ui, "will you be the one to attack", egui::pos2(cx, tag_y), tag_size, coral_red);
+            draw_outlined_text_centered(ui, "or the one to save?", egui::pos2(cx, tag_y + 30.0 * scale), tag_size, vivid_azure);
 
-            // ── Left: Outbreak belowbrick ──
-            let left_brick_x1 = sw * 0.08;
-            let left_brick_x2 = sw * 0.42;
-            let left_brick_y1 = sh * 0.30;
-            let left_brick_y2 = sh * 0.68;
-            let left_brick = egui::Rect::from_min_max(
-                egui::pos2(left_brick_x1, left_brick_y1),
-                egui::pos2(left_brick_x2, left_brick_y2),
+            // ── Outbreak brick (left) ──
+            let left = egui::Rect::from_min_max(
+                egui::pos2(sw * 0.08, sh * 0.32),
+                egui::pos2(sw * 0.42, sh * 0.68),
             );
-            // Coral red belowbrick
-            ui.painter().rect_filled(left_brick, 8.0, coral_red);
-            ui.painter().rect_stroke(left_brick, 8.0, egui::Stroke::new(2.0, egui::Color32::from_rgb(185, 41, 38)), egui::StrokeKind::Outside);
+            ui.painter().rect_filled(left, 8.0, coral_red);
+            ui.painter().rect_stroke(left, 8.0, egui::Stroke::new(2.0, egui::Color32::from_rgb(185, 41, 38)), egui::StrokeKind::Outside);
 
-            // "Outbreak" — size 65.7, coral red, centered in brick
-            let left_cx = (left_brick_x1 + left_brick_x2) * 0.5;
-            let outbreak_y = (left_brick_y1 + left_brick_y2) * 0.5 - 30.0;
-            draw_outlined_text_centered(ui, "Outbreak", egui::pos2(left_cx, outbreak_y), 65.7, coral_red);
+            let lcx = (left.min.x + left.max.x) * 0.5;
+            let lcy = (left.min.y + left.max.y) * 0.5;
+            draw_outlined_text_centered(ui, "Outbreak", egui::pos2(lcx, lcy - 20.0 * scale), 36.0 * scale, coral_red);
+            draw_outlined_text_centered(ui, "cause a outbreak", egui::pos2(lcx, lcy + 20.0 * scale), 16.0 * scale, coral_red);
+            draw_outlined_text_centered(ui, "and wipe out humanity", egui::pos2(lcx, lcy + 38.0 * scale), 16.0 * scale, coral_red);
 
-            // "cause a outbreak and wipe out humanity" — size 29.3, coral red
-            let outbreak_desc_y = outbreak_y + 60.0;
-            draw_outlined_text_centered(ui, "cause a outbreak and wipe out humanity", egui::pos2(left_cx, outbreak_desc_y), 29.3, coral_red);
-
-            // Click detection for Outbreak
-            if ui.allocate_rect(left_brick, egui::Sense::click()).clicked() {
+            if ui.allocate_rect(left, egui::Sense::click()).clicked() {
                 world.game_type = epidemic_core::GameType::Campaign;
                 world.phase = GamePhase::DifficultySelect;
             }
 
-            // ── Right: Cure belowbrick ──
-            let right_brick_x1 = sw * 0.58;
-            let right_brick_x2 = sw * 0.92;
-            let right_brick_y1 = sh * 0.30;
-            let right_brick_y2 = sh * 0.68;
-            let right_brick = egui::Rect::from_min_max(
-                egui::pos2(right_brick_x1, right_brick_y1),
-                egui::pos2(right_brick_x2, right_brick_y2),
+            // ── Cure brick (right) ──
+            let right = egui::Rect::from_min_max(
+                egui::pos2(sw * 0.58, sh * 0.32),
+                egui::pos2(sw * 0.92, sh * 0.68),
             );
-            // Vivid azure belowbrick
-            ui.painter().rect_filled(right_brick, 8.0, vivid_azure);
-            ui.painter().rect_stroke(right_brick, 8.0, egui::Stroke::new(2.0, egui::Color32::from_rgb(86, 137, 231)), egui::StrokeKind::Outside);
+            ui.painter().rect_filled(right, 8.0, vivid_azure);
+            ui.painter().rect_stroke(right, 8.0, egui::Stroke::new(2.0, egui::Color32::from_rgb(86, 137, 231)), egui::StrokeKind::Outside);
 
-            // "Cure" — size 66, vivid azure, centered in brick
-            let right_cx = (right_brick_x1 + right_brick_x2) * 0.5;
-            let cure_y = (right_brick_y1 + right_brick_y2) * 0.5 - 30.0;
-            draw_outlined_text_centered(ui, "Cure", egui::pos2(right_cx, cure_y), 66.0, vivid_azure);
+            let rcx = (right.min.x + right.max.x) * 0.5;
+            let rcy = (right.min.y + right.max.y) * 0.5;
+            draw_outlined_text_centered(ui, "Cure", egui::pos2(rcx, rcy - 20.0 * scale), 36.0 * scale, vivid_azure);
+            draw_outlined_text_centered(ui, "cure the world from", egui::pos2(rcx, rcy + 20.0 * scale), 16.0 * scale, vivid_azure);
+            draw_outlined_text_centered(ui, "a virus and save humanity", egui::pos2(rcx, rcy + 38.0 * scale), 16.0 * scale, vivid_azure);
 
-            // "cure the world from a virus and save humanity" — size 29.4, vivid azure
-            let cure_desc_y = cure_y + 60.0;
-            draw_outlined_text_centered(ui, "cure the world from a virus and save humanity", egui::pos2(right_cx, cure_desc_y), 29.4, vivid_azure);
-
-            // Click detection for Cure
-            if ui.allocate_rect(right_brick, egui::Sense::click()).clicked() {
+            if ui.allocate_rect(right, egui::Sense::click()).clicked() {
                 world.game_type = epidemic_core::GameType::FreePlay;
                 world.phase = GamePhase::DifficultySelect;
             }
