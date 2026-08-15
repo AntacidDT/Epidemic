@@ -631,7 +631,7 @@ fn build_title_screen(ctx: &egui::Context, world: &mut World, _logo: Option<&egu
     bg_image: Option<&egui::TextureHandle>) {
 
     let text_fill = egui::Color32::from_rgb(255, 87, 87);         // #ff5757
-    let sidebar_color = egui::Color32::from_rgba_premultiplied(255, 255, 255, 115); // 45% white
+    let sidebar_color = egui::Color32::from_rgba_unmultiplied(255, 255, 255, 115); // White 45% alpha
     let sidebar_outline = egui::Color32::from_rgb(200, 200, 200);
     let btn_fill = egui::Color32::from_rgb(255, 87, 87);
     let btn_shadow = egui::Color32::from_rgb(0, 0, 0);
