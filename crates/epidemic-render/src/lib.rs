@@ -629,13 +629,13 @@ fn build_splash_screen(ctx: &egui::Context, logo: Option<&egui::TextureHandle>) 
 fn build_title_screen(ctx: &egui::Context, world: &mut World, _logo: Option<&egui::TextureHandle>,
     bg_image: Option<&egui::TextureHandle>) {
 
-    // Color palette (UI elements only)
-    let panel_fill = egui::Color32::from_rgb(232, 130, 130);     // #E88282
-    let btn_fill = egui::Color32::from_rgb(255, 92, 92);         // #FF5C5C Coral Red
-    let btn_outline = egui::Color32::from_rgb(58, 11, 14);       // #3A0B0E Dark Maroon
-    let btn_text = egui::Color32::from_rgb(0, 0, 0);             // #000000 Black
-    let title_color = egui::Color32::from_rgb(128, 24, 24);      // #801818 Dark Red
-    let body_text = egui::Color32::from_rgb(224, 112, 112);      // #E07070 Muted Light Red
+    // Colors
+    let text_fill = egui::Color32::from_rgb(255, 87, 87);         // #ff5757 Coral Red
+    let text_outline = egui::Color32::from_rgb(185, 41, 38);      // #b92926
+    let sidebar_color = egui::Color32::from_rgba_premultiplied(255, 255, 255, 115); // White 45% opacity
+    let sidebar_outline = egui::Color32::from_rgb(200, 200, 200); // light gray outline
+    let btn_fill = egui::Color32::from_rgb(255, 87, 87);          // #ff5757
+    let btn_shadow = egui::Color32::from_rgb(0, 0, 0);            // black shadow
 
     egui::CentralPanel::default()
         .frame(egui::Frame::new().fill(BLACK))
@@ -649,108 +649,116 @@ fn build_title_screen(ctx: &egui::Context, world: &mut World, _logo: Option<&egu
                 ui.put(full_rect, egui::Image::new(tex).fit_to_exact_size(full_rect.size()));
             }
 
-            // ── A. Left Sidebar Container (X: 0.0–0.28, Y: 0.0–1.0) ──
+            // ── Sidebar (1/3 width, 45% transparent white) ──
+            let sidebar_w = sw / 3.0;
             let sidebar_rect = egui::Rect::from_min_size(
                 egui::pos2(full_rect.min.x, full_rect.min.y),
-                egui::vec2(sw * 0.28, sh),
+                egui::vec2(sidebar_w, sh),
             );
-            ui.painter().rect_filled(sidebar_rect, 0.0, panel_fill);
+            ui.painter().rect_filled(sidebar_rect, 0.0, sidebar_color);
 
-            // Vertical button stack centered at X ≈ 0.14
-            let btn_width = sw * 0.20;
-            let btn_height = 48.0;
-            let btn_x = sw * 0.14 - btn_width * 0.5;
+            // 3px outline on right edge of sidebar
+            ui.painter().line_segment(
+                [egui::pos2(sidebar_rect.right(), sidebar_rect.top()),
+                 egui::pos2(sidebar_rect.right(), sidebar_rect.bottom())],
+                egui::Stroke::new(3.0, sidebar_outline),
+            );
+
+            // ── Buttons (centered in sidebar) ──
+            let btn_width = sidebar_w * 0.65;
+            let btn_height = 42.0;
+            let btn_x = sidebar_w * 0.5 - btn_width * 0.5;
+            let btn_spacing = sh * 0.10;
 
             let buttons = [
-                ("PLAY", 0.22),
-                ("LOAD", 0.35),
-                ("ENCYCLOPEDIA", 0.48),
-                ("CREDITS", 0.61),
-                ("SETTINGS", 0.74),
+                ("PLAY", 0.30),
+                ("LOAD", 0.40),
+                ("ENCYCLOPEDIA", 0.50),
+                ("CREDITS", 0.60),
+                ("SETTINGS", 0.70),
             ];
 
             for (label, y_frac) in &buttons {
                 let btn_y = sh * y_frac;
+                let is_hovered = ui.rect_contains_pointer(egui::Rect::from_min_size(
+                    egui::pos2(btn_x, btn_y),
+                    egui::vec2(btn_width, btn_height),
+                ));
+
+                // Hover animation: shrink on hover
+                let scale = if is_hovered { 0.92 } else { 1.0 };
+                let actual_w = btn_width * scale;
+                let actual_h = btn_height * scale;
+                let actual_x = btn_x + (btn_width - actual_w) * 0.5;
+                let actual_y = btn_y + (btn_height - actual_h) * 0.5;
+
                 let btn_rect = egui::Rect::from_min_size(
+                    egui::pos2(actual_x, actual_y),
+                    egui::vec2(actual_w, actual_h),
+                );
+
+                // Black echo/shadow on the side
+                let shadow_rect = egui::Rect::from_min_size(
+                    egui::pos2(actual_x + 3.0, actual_y + 3.0),
+                    egui::vec2(actual_w, actual_h),
+                );
+                ui.painter().rect_filled(shadow_rect, 4.0, btn_shadow);
+
+                // Button fill
+                ui.painter().rect_filled(btn_rect, 4.0, btn_fill);
+
+                // Black 2px border on button
+                ui.painter().rect_stroke(btn_rect, 4.0, egui::Stroke::new(2.0, btn_shadow), egui::StrokeKind::Outside);
+
+                // Button text centered, with outline
+                let text_x = btn_rect.center().x;
+                let text_y = btn_rect.center().y;
+                draw_outlined_text_centered(ui, label, egui::pos2(text_x, text_y), 14.0, egui::Color32::BLACK);
+
+                // Click detection
+                let full_btn_rect = egui::Rect::from_min_size(
                     egui::pos2(btn_x, btn_y),
                     egui::vec2(btn_width, btn_height),
                 );
-
-                // Drop shadow (bottom-right offset)
-                let shadow_offset = 4.0;
-                let shadow_rect = egui::Rect::from_min_size(
-                    egui::pos2(btn_x + shadow_offset, btn_y + shadow_offset),
-                    egui::vec2(btn_width, btn_height),
-                );
-                ui.painter().rect_filled(shadow_rect, 4.0, btn_outline);
-
-                // Button fill
-                let is_hovered = ui.rect_contains_pointer(btn_rect);
-                let fill = if is_hovered {
-                    egui::Color32::from_rgb(255, 120, 120) // lighter on hover
-                } else {
-                    btn_fill
-                };
-                ui.painter().rect_filled(btn_rect, 4.0, fill);
-
-                // Button outline
-                ui.painter().rect_stroke(btn_rect, 4.0, egui::Stroke::new(2.0, btn_outline), egui::StrokeKind::Outside);
-
-                // Button text centered
-                let galley = ui.painter().layout_no_wrap(
-                    label.to_string(),
-                    egui::FontId::proportional(16.0),
-                    btn_text,
-                );
-                let text_pos = egui::pos2(
-                    btn_rect.center().x - galley.size().x * 0.5,
-                    btn_rect.center().y - galley.size().y * 0.5,
-                );
-                ui.painter().galley(text_pos, galley, btn_text);
-
-                // Click detection
-                let response = ui.allocate_rect(btn_rect, egui::Sense::click());
+                let response = ui.allocate_rect(full_btn_rect, egui::Sense::click());
                 if response.clicked() {
                     match *label {
                         "PLAY" => { world.phase = GamePhase::PathogenSelect; }
-                        _ => {} // TODO: other screens
+                        _ => {}
                     }
                 }
             }
 
-            // ── B. Main Text Content Area (X: 0.28–1.0) ──
+            // ── Main Text Content (right side, centered) ──
+            let text_x = sw * 0.65;
 
-            // Main Title: EPIDEMIC at (0.64, 0.25) — outlined
-            let title_x = sw * 0.64;
-            let title_y = sh * 0.25;
-            draw_outlined_text_centered(ui, "EPIDEMIC", egui::pos2(title_x, title_y), 64.0, title_color);
+            // EPIDEMIC — size 130
+            draw_outlined_text_centered(ui, "EPIDEMIC", egui::pos2(text_x, sh * 0.22), 130.0, text_fill);
 
-            // Subtitle: NATURAL STRATEGIES at (0.64, 0.35) — outlined
-            let sub_y = sh * 0.35;
-            draw_outlined_text_centered(ui, "NATURAL STRATEGIES", egui::pos2(title_x, sub_y), 24.0, title_color);
+            // NATURAL STRATEGIES — size 50.9, right under EPIDEMIC
+            draw_outlined_text_centered(ui, "NATURAL STRATEGIES", egui::pos2(text_x, sh * 0.35), 50.9, text_fill);
 
-            // Tagline at (0.64, 0.48) — outlined
-            let tag_y = sh * 0.48;
+            // Tagline — size 33
             draw_outlined_text_centered(
                 ui,
                 "open source pandemic strategy game thats meant for fun :)",
-                egui::pos2(title_x, tag_y),
-                14.0,
-                body_text,
+                egui::pos2(text_x, sh * 0.48),
+                33.0,
+                text_fill,
             );
 
-            // Disclaimer at (0.64, 0.88)
-            let disc_y = sh * 0.85;
+            // Disclaimer — size 22.5, centered
+            let disc_y = sh * 0.82;
             let disc_lines = [
                 "WARNING:",
                 "This game does not encourage the production of real Biological",
                 "hazards. Its purely simulation and absolutely not meant to be used",
                 "for harmful purposes.",
             ];
-            let line_height = 16.0;
+            let line_height = 28.0;
             for (i, line) in disc_lines.iter().enumerate() {
                 let y = disc_y + i as f32 * line_height;
-                draw_outlined_text(ui, line, egui::pos2(title_x, y), 11.0, muted_to_color32(0.7));
+                draw_outlined_text_centered(ui, line, egui::pos2(sw * 0.5, y), 22.5, text_fill);
             }
         });
 }
