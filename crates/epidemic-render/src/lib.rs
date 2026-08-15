@@ -700,10 +700,10 @@ fn build_title_screen(ctx: &egui::Context, world: &mut World, _logo: Option<&egu
 
             // ── Right side text ──
             let cx = sw * 0.65;
-            draw_outlined_text_centered(ui, "EPIDEMIC", egui::pos2(cx, sh * 0.15), 52.0, text_fill);
-            draw_outlined_text_centered(ui, "NATURAL STRATEGIES", egui::pos2(cx, sh * 0.22), 18.0, text_fill);
-            draw_outlined_text_centered(ui, "open source pandemic strategy game", egui::pos2(cx, sh * 0.32), 14.0, text_fill);
-            draw_outlined_text_centered(ui, "thats meant for fun :)", egui::pos2(cx, sh * 0.36), 14.0, text_fill);
+            draw_outlined_text_centered(ui, "EPIDEMIC", egui::pos2(cx, sh * 0.15), 130.0, text_fill);
+            draw_outlined_text_centered(ui, "NATURAL STRATEGIES", egui::pos2(cx, sh * 0.28), 50.9, text_fill);
+            draw_outlined_text_centered(ui, "open source pandemic strategy game", egui::pos2(cx, sh * 0.38), 33.0, text_fill);
+            draw_outlined_text_centered(ui, "thats meant for fun :)", egui::pos2(cx, sh * 0.44), 33.0, text_fill);
 
             // Disclaimer
             let disc = [
@@ -714,7 +714,7 @@ fn build_title_screen(ctx: &egui::Context, world: &mut World, _logo: Option<&egu
             ];
             let dy = sh * 0.80;
             for (i, line) in disc.iter().enumerate() {
-                draw_outlined_text_centered(ui, line, egui::pos2(cx, dy + i as f32 * 22.0), 11.0, text_fill);
+                draw_outlined_text_centered(ui, line, egui::pos2(cx, dy + i as f32 * 28.0), 22.5, text_fill);
             }
         });
 }
