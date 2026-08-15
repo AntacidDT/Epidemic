@@ -151,3 +151,79 @@ pub fn fmt_num(n: u64) -> String {
     else if n >= 1_000 { format!("{:.1}K", n as f64 / 1_000.0) }
     else { format!("{n}") }
 }
+
+// ─── Animation helpers ───
+
+/// Pulse value between 0.0 and 1.0 based on time
+pub fn pulse(time: f32, speed: f32) -> f32 {
+    (time * speed).sin() * 0.5 + 0.5
+}
+
+/// Smooth fade-in alpha based on elapsed time (0.0 to 1.0)
+pub fn fade_in(elapsed_secs: f32, duration_secs: f32) -> f32 {
+    (elapsed_secs / duration_secs).min(1.0)
+}
+
+/// Bounce effect for button press
+pub fn bounce(t: f32) -> f32 {
+    if t < 0.5 {
+        2.0 * t * t
+    } else {
+        1.0 - (-2.0 * t + 2.0).powi(2) / 2.0
+    }
+}
+
+/// Draw a button with hover glow effect
+pub fn draw_animated_button(
+    ui: &mut egui::Ui,
+    rect: egui::Rect,
+    label: &str,
+    font_size: f32,
+    fill: egui::Color32,
+    hover_fill: egui::Color32,
+    text_color: egui::Color32,
+    radius: f32,
+    time: f32,
+) -> bool {
+    let is_hovered = ui.rect_contains_pointer(rect);
+    let is_pressed = is_hovered && ui.input(|i| i.pointer.primary_down());
+
+    // Animate fill
+    let actual_fill = if is_pressed {
+        // Darken on press
+        egui::Color32::from_rgb(
+            (fill.r() as f32 * 0.7) as u8,
+            (fill.g() as f32 * 0.7) as u8,
+            (fill.b() as f32 * 0.7) as u8,
+        )
+    } else if is_hovered {
+        // Glow on hover
+        let glow = pulse(time, 3.0) * 0.15;
+        egui::Color32::from_rgb(
+            (fill.r() as f32 + glow * 40.0).min(255.0) as u8,
+            (fill.g() as f32 + glow * 40.0).min(255.0) as u8,
+            (fill.b() as f32 + glow * 40.0).min(255.0) as u8,
+        )
+    } else {
+        fill
+    };
+
+    // Draw button
+    ui.painter().rect_filled(rect, radius, actual_fill);
+
+    // Text
+    let galley = ui.painter().layout_no_wrap(
+        label.to_string(),
+        egui::FontId::proportional(font_size),
+        text_color,
+    );
+    let text_pos = egui::pos2(
+        rect.center().x - galley.size().x * 0.5,
+        rect.center().y - galley.size().y * 0.5,
+    );
+    ui.painter().galley(text_pos, galley, text_color);
+
+    // Click detection
+    let response = ui.allocate_rect(rect, egui::Sense::click());
+    response.clicked()
+}
